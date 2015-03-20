@@ -1,0 +1,84 @@
+body {
+    font-family: "Bitstream Vera Serif Mono", sans-serif;
+    font-size: 16px;
+    line-height: 1.5em;
+    padding: 0;
+    margin: 5% 20%;
+    background-color: #fdfeff;  
+/* a dark blue color I like     */
+/*    color: #014a7f; 
+
+/* Use this for a really low-contrast look */
+/*    color:#6e7886; */
+
+/* Use this for higher contrast but easy on the eyes */
+    color:#304050;
+}
+
+p {
+    text-align: justify;
+}
+
+/* I'm trying this color scheme of greys where R = G & B = G + 16
+ *
+ * Note that the border and the background both follow
+ * the same pattern. I'm not completely sold on it.
+ */
+
+table {
+    table-layout: auto;
+    margin-left: auto;
+    margin-right: auto;
+    border-top: 10px solid #708090;
+/*    border-top: 10px solid #80808f; */
+/*    border-top: 10px solid #014a7f; */
+ }
+
+th {
+    font-variant: small-caps;
+    font-weight: bold;
+    padding: 5px;
+}
+
+tr.odd {
+    background-color: #f0f0ee;      
+/*    background-color: #b0c4de;      /* X11 color 'LightSteelBlue'   */
+/*    background-color: #d1d1dd;     */
+    background-color: #e0e0ea;     
+}
+
+td {
+    padding: 3px 7px;
+}
+
+blockquote {
+    border-left: 5px solid #708090;
+    padding: 0px 20px; /* top/bottom left/right */
+    margin: 20px 0px;
+    color:#6e7886; 
+}
+
+pre {
+    border-top: 1px solid #708090;
+    background-color: #f0f0ee;
+    padding: 5px 15px; /* top/bottom left/right */
+    font-family: Courier, monospace;
+    font-size-adjust: 0.65;
+    word-wrap: break-all;
+}
+
+code {
+    font-family: Courier, monospace;
+    color: #014a7f;
+    font-size-adjust: 0.5;
+    word-wrap: break-all;
+}
+
+/* Below is specifically for the big dotcharts I've produced
+ * for the STEM project
+ */
+img {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}

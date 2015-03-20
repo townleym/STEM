@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+<meta name="date" content="2014-11-12" />
+
+<title>Model Output</title>
+
+
+
+
+<link href="data:text/css,body%20%7B%0A%20%20%20%20font%2Dfamily%3A%20%22Bitstream%20Vera%20Serif%20Mono%22%2C%20sans%2Dserif%3B%0A%20%20%20%20font%2Dsize%3A%20small%3B%0A%20%20%20%20padding%3A%200%3B%0A%20%20%20%20margin%3A%205%25%2020%25%3B%0A%20%20%20%20background%2Dcolor%3A%20%23fdfeff%3B%20%20%0A%2F%2A%20a%20dark%20blue%20color%20I%20like%20%20%20%20%20%2A%2F%0A%2F%2A%20%20%20%20color%3A%20%23014a7f%3B%20%0A%0A%2F%2A%20Use%20this%20for%20a%20really%20low%2Dcontrast%20look%20%2A%2F%0A%2F%2A%20%20%20%20color%3A%236e7886%3B%20%2A%2F%0A%0A%2F%2A%20Use%20this%20for%20higher%20contrast%20but%20easy%20on%20the%20eyes%20%2A%2F%0A%20%20%20%20color%3A%23304050%3B%0A%7D%0A%0Ap%20%7B%0A%20%20%20%20text%2Dalign%3A%20justify%3B%0A%7D%0A%0A%2F%2A%20I%27m%20trying%20this%20color%20scheme%20of%20greys%20where%20R%20%3D%20G%20%26%20B%20%3D%20G%20%2B%2016%0A%20%2A%0A%20%2A%20Note%20that%20the%20border%20and%20the%20background%20both%20follow%0A%20%2A%20the%20same%20pattern%2E%20I%27m%20not%20completely%20sold%20on%20it%2E%0A%20%2A%2F%0A%0Atable%20%7B%0A%20%20%20%20table%2Dlayout%3A%20auto%3B%0A%20%20%20%20margin%2Dleft%3A%20auto%3B%0A%20%20%20%20margin%2Dright%3A%20auto%3B%0A%20%20%20%20border%2Dtop%3A%2010px%20solid%20%23708090%3B%0A%2F%2A%20%20%20%20border%2Dtop%3A%2010px%20solid%20%2380808f%3B%20%2A%2F%0A%2F%2A%20%20%20%20border%2Dtop%3A%2010px%20solid%20%23014a7f%3B%20%2A%2F%0A%20%7D%0A%0Ath%20%7B%0A%20%20%20%20font%2Dvariant%3A%20small%2Dcaps%3B%0A%20%20%20%20font%2Dweight%3A%20bold%3B%0A%20%20%20%20padding%3A%205px%3B%0A%7D%0A%0Atr%2Eodd%20%7B%0A%20%20%20%20background%2Dcolor%3A%20%23f0f0ee%3B%20%20%20%20%20%20%0A%2F%2A%20%20%20%20background%2Dcolor%3A%20%23b0c4de%3B%20%20%20%20%20%20%2F%2A%20X11%20color%20%27LightSteelBlue%27%20%20%20%2A%2F%0A%2F%2A%20%20%20%20background%2Dcolor%3A%20%23d1d1dd%3B%20%20%20%20%20%2A%2F%0A%2F%2A%20%20%20%20background%2Dcolor%3A%20%23e0e0ea%3B%20%20%20%20%20%2A%2F%0A%7D%0A%0Ablockquote%20%7B%0A%20%20%20%20border%2Dleft%3A%205px%20solid%20%23708090%3B%0A%20%20%20%20padding%3A%200px%2020px%3B%20%2F%2A%20top%2Fbottom%20left%2Fright%20%2A%2F%0A%20%20%20%20margin%3A%2020px%200px%3B%0A%20%20%20%20color%3A%236e7886%3B%20%0A%7D%0A%0Apre%20%7B%0A%20%20%20%20border%2Dtop%3A%201px%20solid%20%23708090%3B%0A%20%20%20%20background%2Dcolor%3A%20%23f0f0ee%3B%0A%20%20%20%20padding%3A%205px%2015px%3B%20%2F%2A%20top%2Fbottom%20left%2Fright%20%2A%2F%0A%20%20%20%20font%2Dfamily%3A%20Courier%2C%20monospace%3B%0A%20%20%20%20font%2Dsize%2Dadjust%3A%200%2E65%3B%0A%20%20%20%20word%2Dwrap%3A%20break%2Dword%3B%0A%7D%0A%0Acode%20%7B%0A%20%20%20%20font%2Dfamily%3A%20Courier%2C%20monospace%3B%0A%20%20%20%20color%3A%20blue%3B%0A%20%20%20%20font%2Dsize%2Dadjust%3A%200%2E5%0A%7D%0A%0A%2F%2A%20Below%20is%20specifically%20for%20the%20big%20dotcharts%20I%27ve%20produced%0A%20%2A%20for%20the%20STEM%20project%0A%20%2A%2F%0Aimg%20%7B%0A%20%20%20%20width%3A%20600px%3B%0A%20%20%20%20height%3A%20800px%3B%0A%20%20%20%20display%3A%20block%3B%0A%20%20%20%20margin%2Dleft%3A%20auto%3B%0A%20%20%20%20margin%2Dright%3A%20auto%3B%0A%7D%0A" rel="stylesheet" type="text/css" />
+
+</head>
+
+<body>
+
+
+
+<div id="header">
+<h1 class="title">Model Output</h1>
+<h4 class="date"><em>November 12, 2014</em></h4>
+</div>
+
+
+<pre><code>## Loading required package: sandwich
+## Loading required package: msm
+## Loading required package: knitr
+## Loading required package: RSQLite
+## Loading required package: DBI</code></pre>
+<div id="model" class="section level1">
+<h1><span class="header-section-number">1</span> Model</h1>
+<p>Main effects, then interact sex, nativity, race. The intercept is a white male of average age (about 43.6 yrs) in a city with a mean STEM job LQ (about 1.12).</p>
+<div id="lq-or-logcount" class="section level2">
+<h2><span class="header-section-number">1.1</span> LQ or log(count)?</h2>
+<p>I don’t like the latter bic.test method since it seems a little weird with the degrees of freedom. I don’t know that the algebra is correct, because we just apply the penalty to the difference in doubled log likelihoods, rather than penalizing each and taking the difference. Plus, the way Chris was doing it, the parameter penalty will always be 1 (if you’re just adding a single factor between models). Dunno. Seems fishy. Especially when we can calculate the BICs and take the differences?</p>
+<p>How to present the above:</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">variable</th>
+<th align="right">model1</th>
+<th align="right">model2</th>
+<th align="right">model3</th>
+<th align="right">model4</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">(Intercept)</td>
+<td align="right">0.419</td>
+<td align="right">0.357</td>
+<td align="right">0.417</td>
+<td align="right">0.499</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceA</td>
+<td align="right">1.216</td>
+<td align="right">1.212</td>
+<td align="right">1.177</td>
+<td align="right">1.180</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceB</td>
+<td align="right">0.792</td>
+<td align="right">0.791</td>
+<td align="right">0.801</td>
+<td align="right">0.802</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceH</td>
+<td align="right">0.710</td>
+<td align="right">0.711</td>
+<td align="right">0.738</td>
+<td align="right">0.738</td>
+</tr>
+<tr class="odd">
+<td align="left">f_sexF</td>
+<td align="right">0.645</td>
+<td align="right">0.645</td>
+<td align="right">0.646</td>
+<td align="right">0.646</td>
+</tr>
+<tr class="even">
+<td align="left">f_fbfb</td>
+<td align="right">1.091</td>
+<td align="right">1.088</td>
+<td align="right">1.086</td>
+<td align="right">1.089</td>
+</tr>
+<tr class="odd">
+<td align="left">agec</td>
+<td align="right">0.987</td>
+<td align="right">0.987</td>
+<td align="right">0.987</td>
+<td align="right">0.987</td>
+</tr>
+<tr class="even">
+<td align="left">I(agec^2)</td>
+<td align="right">1.000</td>
+<td align="right">1.000</td>
+<td align="right">1.000</td>
+<td align="right">1.000</td>
+</tr>
+<tr class="odd">
+<td align="left">stemjoblqc</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">1.271</td>
+<td align="right">1.276</td>
+</tr>
+<tr class="even">
+<td align="left">log(stemjobcount)</td>
+<td align="right">NA</td>
+<td align="right">1.014</td>
+<td align="right">NA</td>
+<td align="right">0.985</td>
+</tr>
+<tr class="odd">
+<td align="left">——————</td>
+<td align="right">————</td>
+<td align="right">————</td>
+<td align="right">————</td>
+<td align="right">————</td>
+</tr>
+<tr class="even">
+<td align="left">log Likelihood</td>
+<td align="right">-130573</td>
+<td align="right">-130569</td>
+<td align="right">-130048</td>
+<td align="right">-130043</td>
+</tr>
+<tr class="odd">
+<td align="left">BIC</td>
+<td align="right">261255</td>
+<td align="right">261259</td>
+<td align="right">260216</td>
+<td align="right">260219</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="main-effects" class="section level2">
+<h2><span class="header-section-number">1.2</span> Main effects</h2>
+</div>
+<div id="add-lq" class="section level2">
+<h2><span class="header-section-number">1.3</span> Add LQ</h2>
+<hr />
+<table>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="left">mod.me.coef</th>
+<th align="left">mod.lq.coef</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">(Intercept)</td>
+<td align="left">0.419 (0.002)</td>
+<td align="left">0.417 (0.002)</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceA</td>
+<td align="left">1.216 (0.010)</td>
+<td align="left">1.177 (0.010)</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceB</td>
+<td align="left">0.792 (0.012)</td>
+<td align="left">0.801 (0.012)</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceH</td>
+<td align="left">0.710 (0.011)</td>
+<td align="left">0.738 (0.011)</td>
+</tr>
+<tr class="odd">
+<td align="left">f_sexF</td>
+<td align="left">0.645 (0.005)</td>
+<td align="left">0.646 (0.005)</td>
+</tr>
+<tr class="even">
+<td align="left">f_fbfb</td>
+<td align="left">1.091 (0.009)</td>
+<td align="left">1.086 (0.009)</td>
+</tr>
+<tr class="odd">
+<td align="left">agec</td>
+<td align="left">0.987 (0.000)</td>
+<td align="left">0.987 (0.000)</td>
+</tr>
+<tr class="even">
+<td align="left">I(agec^2)</td>
+<td align="left">1.000 (0.000)</td>
+<td align="left">1.000 (0.000)</td>
+</tr>
+<tr class="odd">
+<td align="left">stemjoblqc</td>
+<td align="left"></td>
+<td align="left">1.271 (0.006)</td>
+</tr>
+<tr class="even">
+<td align="left">logLik</td>
+<td align="left">-130573</td>
+<td align="left">-130048</td>
+</tr>
+<tr class="odd">
+<td align="left">BIC</td>
+<td align="left">261255</td>
+<td align="left">260216</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="interact-sex" class="section level2">
+<h2><span class="header-section-number">1.4</span> Interact sex</h2>
+<table>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="right">Estimate</th>
+<th align="right">robust.se</th>
+<th align="right">lcl</th>
+<th align="right">ucl</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">(Intercept)</td>
+<td align="right">0.418</td>
+<td align="right">0.002</td>
+<td align="right">0.414</td>
+<td align="right">0.422</td>
+</tr>
+<tr class="even">
+<td align="left">stemjoblqc</td>
+<td align="right">1.249</td>
+<td align="right">0.007</td>
+<td align="right">1.236</td>
+<td align="right">1.262</td>
+</tr>
+<tr class="odd">
+<td align="left">f_sexF</td>
+<td align="right">0.641</td>
+<td align="right">0.005</td>
+<td align="right">0.631</td>
+<td align="right">0.651</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceA</td>
+<td align="right">1.177</td>
+<td align="right">0.010</td>
+<td align="right">1.157</td>
+<td align="right">1.197</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceB</td>
+<td align="right">0.801</td>
+<td align="right">0.012</td>
+<td align="right">0.777</td>
+<td align="right">0.826</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceH</td>
+<td align="right">0.738</td>
+<td align="right">0.011</td>
+<td align="right">0.716</td>
+<td align="right">0.761</td>
+</tr>
+<tr class="odd">
+<td align="left">f_fbfb</td>
+<td align="right">1.085</td>
+<td align="right">0.009</td>
+<td align="right">1.069</td>
+<td align="right">1.102</td>
+</tr>
+<tr class="even">
+<td align="left">agec</td>
+<td align="right">0.987</td>
+<td align="right">0.000</td>
+<td align="right">0.986</td>
+<td align="right">0.988</td>
+</tr>
+<tr class="odd">
+<td align="left">I(agec^2)</td>
+<td align="right">1.000</td>
+<td align="right">0.000</td>
+<td align="right">1.000</td>
+<td align="right">1.000</td>
+</tr>
+<tr class="even">
+<td align="left">stemjoblqc:f_sexF</td>
+<td align="right">1.086</td>
+<td align="right">0.014</td>
+<td align="right">1.060</td>
+<td align="right">1.113</td>
+</tr>
+</tbody>
+</table>
+<p>Being in a high STEM job LQ city has a positive effect on the probability of a match for a woman. About the same in magnitude as for foreign born in the previous model.</p>
+</div>
+<div id="interact-nativity" class="section level2">
+<h2><span class="header-section-number">1.5</span> Interact nativity</h2>
+<table>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="right">Estimate</th>
+<th align="right">robust.se</th>
+<th align="right">lcl</th>
+<th align="right">ucl</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">(Intercept)</td>
+<td align="right">0.417</td>
+<td align="right">0.002</td>
+<td align="right">0.413</td>
+<td align="right">0.422</td>
+</tr>
+<tr class="even">
+<td align="left">stemjoblqc</td>
+<td align="right">1.289</td>
+<td align="right">0.010</td>
+<td align="right">1.270</td>
+<td align="right">1.309</td>
+</tr>
+<tr class="odd">
+<td align="left">f_fbfb</td>
+<td align="right">1.088</td>
+<td align="right">0.009</td>
+<td align="right">1.071</td>
+<td align="right">1.105</td>
+</tr>
+<tr class="even">
+<td align="left">f_sexF</td>
+<td align="right">0.646</td>
+<td align="right">0.005</td>
+<td align="right">0.636</td>
+<td align="right">0.655</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceA</td>
+<td align="right">1.178</td>
+<td align="right">0.010</td>
+<td align="right">1.159</td>
+<td align="right">1.198</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceB</td>
+<td align="right">0.800</td>
+<td align="right">0.012</td>
+<td align="right">0.776</td>
+<td align="right">0.825</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceH</td>
+<td align="right">0.737</td>
+<td align="right">0.011</td>
+<td align="right">0.715</td>
+<td align="right">0.760</td>
+</tr>
+<tr class="even">
+<td align="left">agec</td>
+<td align="right">0.987</td>
+<td align="right">0.000</td>
+<td align="right">0.986</td>
+<td align="right">0.988</td>
+</tr>
+<tr class="odd">
+<td align="left">I(agec^2)</td>
+<td align="right">1.000</td>
+<td align="right">0.000</td>
+<td align="right">1.000</td>
+<td align="right">1.000</td>
+</tr>
+<tr class="even">
+<td align="left">stemjoblqc:f_fbfb</td>
+<td align="right">0.974</td>
+<td align="right">0.010</td>
+<td align="right">0.956</td>
+<td align="right">0.993</td>
+</tr>
+</tbody>
+</table>
+<p>Note the direction change from the previous version of this file I sent. Calculating the LQ of STEM jobs correctly, now has made the effect modification for the foreign born <em>negative</em>. Being in a higher LQ city <strong>lowers</strong> (slightly) the effect modification for a match.</p>
+<p>This is hard to believe. And I can hear Mark saying that maybe the relative risk estimation does not work…</p>
+<p>Although, an anecdote might inform. Kristi Copeland’s husband is from the subcontinent, and his first job was in Cleveland with Booz, Allen, and Hamilton. There were <em>lots</em> of foreign born in that office and they all joked that they accepted the job in Cleveland because they didn’t know better.</p>
+</div>
+<div id="interact-race" class="section level2">
+<h2><span class="header-section-number">1.6</span> Interact race</h2>
+<table>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="right">Estimate</th>
+<th align="right">robust.se</th>
+<th align="right">lcl</th>
+<th align="right">ucl</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">(Intercept)</td>
+<td align="right">0.417</td>
+<td align="right">0.002</td>
+<td align="right">0.413</td>
+<td align="right">0.421</td>
+</tr>
+<tr class="even">
+<td align="left">stemjoblqc</td>
+<td align="right">1.301</td>
+<td align="right">0.010</td>
+<td align="right">1.282</td>
+<td align="right">1.320</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceA</td>
+<td align="right">1.187</td>
+<td align="right">0.010</td>
+<td align="right">1.167</td>
+<td align="right">1.208</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceB</td>
+<td align="right">0.801</td>
+<td align="right">0.012</td>
+<td align="right">0.777</td>
+<td align="right">0.826</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceH</td>
+<td align="right">0.747</td>
+<td align="right">0.012</td>
+<td align="right">0.725</td>
+<td align="right">0.770</td>
+</tr>
+<tr class="even">
+<td align="left">f_sexF</td>
+<td align="right">0.646</td>
+<td align="right">0.005</td>
+<td align="right">0.636</td>
+<td align="right">0.655</td>
+</tr>
+<tr class="odd">
+<td align="left">f_fbfb</td>
+<td align="right">1.086</td>
+<td align="right">0.009</td>
+<td align="right">1.069</td>
+<td align="right">1.103</td>
+</tr>
+<tr class="even">
+<td align="left">agec</td>
+<td align="right">0.987</td>
+<td align="right">0.000</td>
+<td align="right">0.986</td>
+<td align="right">0.988</td>
+</tr>
+<tr class="odd">
+<td align="left">I(agec^2)</td>
+<td align="right">1.000</td>
+<td align="right">0.000</td>
+<td align="right">1.000</td>
+<td align="right">1.000</td>
+</tr>
+<tr class="even">
+<td align="left">stemjoblqc:f_raceA</td>
+<td align="right">0.940</td>
+<td align="right">0.009</td>
+<td align="right">0.922</td>
+<td align="right">0.959</td>
+</tr>
+<tr class="odd">
+<td align="left">stemjoblqc:f_raceB</td>
+<td align="right">1.056</td>
+<td align="right">0.036</td>
+<td align="right">0.987</td>
+<td align="right">1.130</td>
+</tr>
+<tr class="even">
+<td align="left">stemjoblqc:f_raceH</td>
+<td align="right">1.098</td>
+<td align="right">0.029</td>
+<td align="right">1.042</td>
+<td align="right">1.156</td>
+</tr>
+</tbody>
+</table>
+<p>Perhaps a little surprisingly, Asian men, are a little <em>less</em> likely to be matched in high STEM job LQ cities than white men. For Black men it is marginally positive, but not well estimated enough to be definitive, and for Hispanic men, strongly positive –of roughly the same magnitude as for women above.</p>
+</div>
+</div>
+<div id="model-based-assessment-of-interactions" class="section level1">
+<h1><span class="header-section-number">2</span> Model-based assessment of interactions</h1>
+<p>I think the more standard way is to put all interactions into a single model, then test the differences between models, pulling one out at a time.</p>
+<p>But, here I will just present a table of each model estimated separately. There are many roads to Rome…</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="right">Estimate</th>
+<th align="right">robust.se</th>
+<th align="right">lcl</th>
+<th align="right">ucl</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">(Intercept)</td>
+<td align="right">0.418</td>
+<td align="right">0.002</td>
+<td align="right">0.413</td>
+<td align="right">0.422</td>
+</tr>
+<tr class="even">
+<td align="left">stemjoblqc</td>
+<td align="right">1.274</td>
+<td align="right">0.011</td>
+<td align="right">1.254</td>
+<td align="right">1.296</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceA</td>
+<td align="right">1.189</td>
+<td align="right">0.010</td>
+<td align="right">1.169</td>
+<td align="right">1.210</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceB</td>
+<td align="right">0.803</td>
+<td align="right">0.012</td>
+<td align="right">0.778</td>
+<td align="right">0.827</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceH</td>
+<td align="right">0.748</td>
+<td align="right">0.012</td>
+<td align="right">0.725</td>
+<td align="right">0.771</td>
+</tr>
+<tr class="even">
+<td align="left">f_sexF</td>
+<td align="right">0.641</td>
+<td align="right">0.005</td>
+<td align="right">0.631</td>
+<td align="right">0.651</td>
+</tr>
+<tr class="odd">
+<td align="left">f_fbfb</td>
+<td align="right">1.084</td>
+<td align="right">0.009</td>
+<td align="right">1.067</td>
+<td align="right">1.101</td>
+</tr>
+<tr class="even">
+<td align="left">agec</td>
+<td align="right">0.987</td>
+<td align="right">0.000</td>
+<td align="right">0.986</td>
+<td align="right">0.988</td>
+</tr>
+<tr class="odd">
+<td align="left">I(agec^2)</td>
+<td align="right">1.000</td>
+<td align="right">0.000</td>
+<td align="right">1.000</td>
+<td align="right">1.000</td>
+</tr>
+<tr class="even">
+<td align="left">stemjoblqc:f_raceA</td>
+<td align="right">0.923</td>
+<td align="right">0.012</td>
+<td align="right">0.900</td>
+<td align="right">0.947</td>
+</tr>
+<tr class="odd">
+<td align="left">stemjoblqc:f_raceB</td>
+<td align="right">1.043</td>
+<td align="right">0.036</td>
+<td align="right">0.975</td>
+<td align="right">1.116</td>
+</tr>
+<tr class="even">
+<td align="left">stemjoblqc:f_raceH</td>
+<td align="right">1.085</td>
+<td align="right">0.029</td>
+<td align="right">1.029</td>
+<td align="right">1.144</td>
+</tr>
+<tr class="odd">
+<td align="left">stemjoblqc:f_sexF</td>
+<td align="right">1.089</td>
+<td align="right">0.014</td>
+<td align="right">1.063</td>
+<td align="right">1.117</td>
+</tr>
+<tr class="even">
+<td align="left">stemjoblqc:f_fbfb</td>
+<td align="right">1.021</td>
+<td align="right">0.013</td>
+<td align="right">0.996</td>
+<td align="right">1.047</td>
+</tr>
+</tbody>
+</table>
+<p>Now figure out a way to display all of that together</p>
+<p>This was hand-coded</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">var</th>
+<th align="right">Model 1 (sex)</th>
+<th align="right">Model 2 (nat)</th>
+<th align="right">Model 3 (race)</th>
+<th align="right">Model 4 (all)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">(Intercept)</td>
+<td align="right">0.418 (0.002)</td>
+<td align="right">0.418 (0.002)</td>
+<td align="right">0.417 (0.002)</td>
+<td align="right">0.418 (0.002)</td>
+</tr>
+<tr class="even">
+<td align="left">stemjoblqc</td>
+<td align="right">1.249 (0.011)</td>
+<td align="right">1.289 (0.011)</td>
+<td align="right">1.301 (0.010)</td>
+<td align="right">1.274 (0.011)</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceA</td>
+<td align="right">1.177 (0.010)</td>
+<td align="right">1.178 (0.010)</td>
+<td align="right">1.187 (0.010)</td>
+<td align="right">1.189 (0.010)</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceB</td>
+<td align="right">0.801 (0.012)</td>
+<td align="right">0.800 (0.012)</td>
+<td align="right">0.801 (0.012)</td>
+<td align="right">0.803 (0.012)</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceH</td>
+<td align="right">0.738 (0.011)</td>
+<td align="right">0.737 (0.011)</td>
+<td align="right">0.747 (0.012)</td>
+<td align="right">0.748 (0.012)</td>
+</tr>
+<tr class="even">
+<td align="left">f_sexF</td>
+<td align="right">0.641 (0.005)</td>
+<td align="right">0.646 (0.005)</td>
+<td align="right">0.646 (0.005)</td>
+<td align="right">0.641 (0.005)</td>
+</tr>
+<tr class="odd">
+<td align="left">f_fbfb</td>
+<td align="right">1.085 (0.009)</td>
+<td align="right">1.088 (0.009)</td>
+<td align="right">1.086 (0.009)</td>
+<td align="right">1.084 (0.009)</td>
+</tr>
+<tr class="even">
+<td align="left">agec</td>
+<td align="right">0.987 (0.000)</td>
+<td align="right">0.987 (0.000)</td>
+<td align="right">0.987 (0.000)</td>
+<td align="right">0.987 (0.000)</td>
+</tr>
+<tr class="odd">
+<td align="left">I(agec^2)</td>
+<td align="right">1.000 (0.000)</td>
+<td align="right">1.000 (0.000)</td>
+<td align="right">1.000 (0.000)</td>
+<td align="right">1.000 (0.000)</td>
+</tr>
+<tr class="even">
+<td align="left">stemjoblqc:f_raceA</td>
+<td align="right"></td>
+<td align="right"></td>
+<td align="right">0.940 (0.009)</td>
+<td align="right">0.923 (0.012)</td>
+</tr>
+<tr class="odd">
+<td align="left">stemjoblqc:f_raceB</td>
+<td align="right"></td>
+<td align="right"></td>
+<td align="right">1.056 (0.036)</td>
+<td align="right">1.043 (0.036)</td>
+</tr>
+<tr class="even">
+<td align="left">stemjoblqc:f_raceH</td>
+<td align="right"></td>
+<td align="right"></td>
+<td align="right">1.098 (0.029)</td>
+<td align="right">1.085 (0.029)</td>
+</tr>
+<tr class="odd">
+<td align="left">stemjoblqc:f_sexF</td>
+<td align="right">1.086 (0.014)</td>
+<td align="right"></td>
+<td align="right"></td>
+<td align="right">1.089 (0.014)</td>
+</tr>
+<tr class="even">
+<td align="left">stemjoblqc:f_fbfb</td>
+<td align="right"></td>
+<td align="right">0.974 (0.010)</td>
+<td align="right"></td>
+<td align="right">1.021 (0.013)</td>
+</tr>
+<tr class="odd">
+<td align="left">log Likelihood</td>
+<td align="right">-130036</td>
+<td align="right">-130046</td>
+<td align="right">-130031</td>
+<td align="right">-130018</td>
+</tr>
+<tr class="even">
+<td align="left">BIC</td>
+<td align="right">260206</td>
+<td align="right">260225</td>
+<td align="right">260219</td>
+<td align="right">260218</td>
+</tr>
+</tbody>
+</table>
+<div id="model-comparison" class="section level2">
+<h2><span class="header-section-number">2.1</span> Model Comparison</h2>
+<p>Now remove factors and compare the models. (not shown)</p>
+</div>
+</div>
+<div id="predicted-probabilities" class="section level1">
+<h1><span class="header-section-number">3</span> Predicted probabilities</h1>
+<p>(not shown)</p>
+</div>
+
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://c328740.ssl.cf1.rackcdn.com/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

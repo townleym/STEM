@@ -1,0 +1,13 @@
+base
+datasets
+DBI
+graphics
+grDevices
+knitr
+magrittr
+methods
+msm
+RSQLite
+sandwich
+stats
+utils

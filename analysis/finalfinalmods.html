@@ -1,0 +1,2017 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+<meta name="date" content="2014-11-12" />
+
+<title>Model Output</title>
+
+
+
+
+<link rel="stylesheet" href="basic.css" type="text/css" />
+
+</head>
+
+<body>
+
+
+
+<div id="header">
+<h1 class="title">Model Output</h1>
+<h4 class="date"><em>November 12, 2014</em></h4>
+</div>
+
+
+<pre><code>## Loading required package: sandwich
+## Loading required package: msm
+## Loading required package: knitr
+## Loading required package: magrittr
+## Loading required package: RSQLite
+## Loading required package: DBI</code></pre>
+<p>The big difference is that we lose almost <em>half</em> of the observations once we eliminate those with advanced degrees. By classifying second degree fields, we picked up about 1,000 additional STEM degree holders to bring the number to about 92,000. But by eliminating those with an advanced degree, we lost about 85,000.</p>
+<p>That is astounding.</p>
+<div id="model" class="section level1">
+<h1><span class="header-section-number">1</span> Model</h1>
+<p>Main effects, then interact sex, nativity, race. The intercept is a white male of average age (about 42.8 yrs) in a city with a STEM job LQ of 1.</p>
+<div id="lq-or-logcount" class="section level2">
+<h2><span class="header-section-number">1.1</span> LQ or log(count)?</h2>
+<p>We have four models, one with neither stem job count nor the LQ, then three with all possible combinations.</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">variable</th>
+<th align="right">model1</th>
+<th align="right">model2</th>
+<th align="right">model3</th>
+<th align="right">model4</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">(Intercept)</td>
+<td align="right">0.494</td>
+<td align="right">0.490</td>
+<td align="right">0.482</td>
+<td align="right">0.478</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceH</td>
+<td align="right">0.722</td>
+<td align="right">0.723</td>
+<td align="right">0.742</td>
+<td align="right">0.744</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceB</td>
+<td align="right">0.795</td>
+<td align="right">0.800</td>
+<td align="right">0.800</td>
+<td align="right">0.806</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceA</td>
+<td align="right">1.214</td>
+<td align="right">1.228</td>
+<td align="right">1.182</td>
+<td align="right">1.196</td>
+</tr>
+<tr class="odd">
+<td align="left">f_sexF</td>
+<td align="right">0.616</td>
+<td align="right">0.617</td>
+<td align="right">0.617</td>
+<td align="right">0.617</td>
+</tr>
+<tr class="even">
+<td align="left">f_fbfb</td>
+<td align="right">0.893</td>
+<td align="right">0.902</td>
+<td align="right">0.896</td>
+<td align="right">0.906</td>
+</tr>
+<tr class="odd">
+<td align="left">agec</td>
+<td align="right">0.988</td>
+<td align="right">0.988</td>
+<td align="right">0.988</td>
+<td align="right">0.988</td>
+</tr>
+<tr class="even">
+<td align="left">I(agec^2)</td>
+<td align="right">1.000</td>
+<td align="right">1.000</td>
+<td align="right">1.000</td>
+<td align="right">1.000</td>
+</tr>
+<tr class="odd">
+<td align="left">stemjobcountc</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">1.227</td>
+<td align="right">1.000</td>
+</tr>
+<tr class="even">
+<td align="left">stemjoblqc</td>
+<td align="right">NA</td>
+<td align="right">1.000</td>
+<td align="right">NA</td>
+<td align="right">1.229</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr class="header">
+<th align="left">variable</th>
+<th align="right">model1</th>
+<th align="right">model2</th>
+<th align="right">model3</th>
+<th align="right">model4</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">(Intercept)</td>
+<td align="right">0.494</td>
+<td align="right">0.490</td>
+<td align="right">0.482</td>
+<td align="right">0.478</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceH</td>
+<td align="right">0.722</td>
+<td align="right">0.723</td>
+<td align="right">0.742</td>
+<td align="right">0.744</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceB</td>
+<td align="right">0.795</td>
+<td align="right">0.800</td>
+<td align="right">0.800</td>
+<td align="right">0.806</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceA</td>
+<td align="right">1.214</td>
+<td align="right">1.228</td>
+<td align="right">1.182</td>
+<td align="right">1.196</td>
+</tr>
+<tr class="odd">
+<td align="left">f_sexF</td>
+<td align="right">0.616</td>
+<td align="right">0.617</td>
+<td align="right">0.617</td>
+<td align="right">0.617</td>
+</tr>
+<tr class="even">
+<td align="left">f_fbfb</td>
+<td align="right">0.893</td>
+<td align="right">0.902</td>
+<td align="right">0.896</td>
+<td align="right">0.906</td>
+</tr>
+<tr class="odd">
+<td align="left">agec</td>
+<td align="right">0.988</td>
+<td align="right">0.988</td>
+<td align="right">0.988</td>
+<td align="right">0.988</td>
+</tr>
+<tr class="even">
+<td align="left">I(agec^2)</td>
+<td align="right">1.000</td>
+<td align="right">1.000</td>
+<td align="right">1.000</td>
+<td align="right">1.000</td>
+</tr>
+<tr class="odd">
+<td align="left">stemjobcountc</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">1.227</td>
+<td align="right">1.000</td>
+</tr>
+<tr class="even">
+<td align="left">stemjoblqc</td>
+<td align="right">NA</td>
+<td align="right">1.000</td>
+<td align="right">NA</td>
+<td align="right">1.229</td>
+</tr>
+<tr class="odd">
+<td align="left">log Likelihood</td>
+<td align="right">-70982.000</td>
+<td align="right">-70960.000</td>
+<td align="right">-70798.000</td>
+<td align="right">-70772.000</td>
+</tr>
+<tr class="even">
+<td align="left">BIC</td>
+<td align="right">142067.000</td>
+<td align="right">142034.000</td>
+<td align="right">141711.000</td>
+<td align="right">141669.000</td>
+</tr>
+</tbody>
+</table>
+<p>This result is different from what we got before in which the centered LQ did all the work. The evidence is mixed. By itself, the stem job count does not improve model fit. But in the model with LQ, we have evidence that it does. Furthermore they pull in opposite directions.</p>
+<p>This is a pretty big change from when we ran the models with STEM degree holders with either a BA or an advanced degree. Why?</p>
+<p>[1] “time in minutes: 0.264266666666667” [1] TRUE</p>
+<table>
+<caption>Attainment X STEM Degree: all LF</caption>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="right">0</th>
+<th align="right">1</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">1</td>
+<td align="right">237035</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">2</td>
+<td align="right">496502</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">3</td>
+<td align="right">683713</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">4</td>
+<td align="right">421437</td>
+<td align="right">102208</td>
+</tr>
+<tr class="odd">
+<td align="left">5</td>
+<td align="right">233293</td>
+<td align="right">91771</td>
+</tr>
+</tbody>
+</table>
+<table>
+<caption>Attainment X STEM Degree: all LF aged 25 - 65</caption>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="right">0</th>
+<th align="right">1</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">1</td>
+<td align="right">171473</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">2</td>
+<td align="right">400065</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">3</td>
+<td align="right">557362</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">4</td>
+<td align="right">378748</td>
+<td align="right">92647</td>
+</tr>
+<tr class="odd">
+<td align="left">5</td>
+<td align="right">217495</td>
+<td align="right">85794</td>
+</tr>
+</tbody>
+</table>
+<p>The rows correspond to highest educational attainment. 4 is a BA, and 5 is an advanced degree. When we exclude advanced degree holders, we will lose almost half the STEM degree holders.</p>
+<p>That is just because advanced degree attainment among STEM degree holders is astounding:</p>
+<table>
+<caption>Advanced degree attainment, non-STEM and STEM degree holders (observations).</caption>
+<tbody>
+<tr class="odd">
+<td align="left">0</td>
+<td align="right">0.36</td>
+</tr>
+<tr class="even">
+<td align="left">1</td>
+<td align="right">0.48</td>
+</tr>
+</tbody>
+</table>
+<table>
+<caption>Advanced degree attainment, non-STEM and STEM degree holders (counts).</caption>
+<tbody>
+<tr class="odd">
+<td align="left">0</td>
+<td align="right">0.35</td>
+</tr>
+<tr class="even">
+<td align="left">1</td>
+<td align="right">0.46</td>
+</tr>
+</tbody>
+</table>
+<p>And below is the effect on matching</p>
+<table>
+<caption>STEM Degree X Match: all degree holders</caption>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="right">0</th>
+<th align="right">1</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">0</td>
+<td align="right">1725143</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">1</td>
+<td align="right">109494</td>
+<td align="right">68947</td>
+</tr>
+</tbody>
+</table>
+<table>
+<caption>STEM Degree X Match: excluding advanced degree holders</caption>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="right">0</th>
+<th align="right">1</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">0</td>
+<td align="right">378748</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">1</td>
+<td align="right">54097</td>
+<td align="right">38550</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="main-effects" class="section level2">
+<h2><span class="header-section-number">1.2</span> Main effects</h2>
+<p>As a baseline, we will first estimate just the main effects for age, race, sex, and nativity.</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="right">Estimate</th>
+<th align="right">robust.se</th>
+<th align="right">lcl</th>
+<th align="right">ucl</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">(Intercept)</td>
+<td align="right">0.494</td>
+<td align="right">0.003</td>
+<td align="right">0.487</td>
+<td align="right">0.500</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceH</td>
+<td align="right">0.722</td>
+<td align="right">0.014</td>
+<td align="right">0.695</td>
+<td align="right">0.749</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceB</td>
+<td align="right">0.795</td>
+<td align="right">0.015</td>
+<td align="right">0.766</td>
+<td align="right">0.824</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceA</td>
+<td align="right">1.214</td>
+<td align="right">0.015</td>
+<td align="right">1.186</td>
+<td align="right">1.244</td>
+</tr>
+<tr class="odd">
+<td align="left">f_sexF</td>
+<td align="right">0.616</td>
+<td align="right">0.007</td>
+<td align="right">0.604</td>
+<td align="right">0.629</td>
+</tr>
+<tr class="even">
+<td align="left">f_fbfb</td>
+<td align="right">0.893</td>
+<td align="right">0.010</td>
+<td align="right">0.873</td>
+<td align="right">0.913</td>
+</tr>
+<tr class="odd">
+<td align="left">agec</td>
+<td align="right">0.988</td>
+<td align="right">0.000</td>
+<td align="right">0.987</td>
+<td align="right">0.989</td>
+</tr>
+<tr class="even">
+<td align="left">I(agec^2)</td>
+<td align="right">1.000</td>
+<td align="right">0.000</td>
+<td align="right">1.000</td>
+<td align="right">1.000</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="add-lq-and-stem-job-count" class="section level2">
+<h2><span class="header-section-number">1.3</span> Add LQ and STEM Job count</h2>
+<p>And from here on I will include both.</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="right">Estimate</th>
+<th align="right">robust.se</th>
+<th align="right">lcl</th>
+<th align="right">ucl</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">(Intercept)</td>
+<td align="right">0.478</td>
+<td align="right">0.003</td>
+<td align="right">0.472</td>
+<td align="right">0.484</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceH</td>
+<td align="right">0.744</td>
+<td align="right">0.014</td>
+<td align="right">0.717</td>
+<td align="right">0.772</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceB</td>
+<td align="right">0.806</td>
+<td align="right">0.015</td>
+<td align="right">0.777</td>
+<td align="right">0.836</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceA</td>
+<td align="right">1.196</td>
+<td align="right">0.015</td>
+<td align="right">1.167</td>
+<td align="right">1.224</td>
+</tr>
+<tr class="odd">
+<td align="left">f_sexF</td>
+<td align="right">0.617</td>
+<td align="right">0.007</td>
+<td align="right">0.604</td>
+<td align="right">0.630</td>
+</tr>
+<tr class="even">
+<td align="left">f_fbfb</td>
+<td align="right">0.906</td>
+<td align="right">0.010</td>
+<td align="right">0.886</td>
+<td align="right">0.927</td>
+</tr>
+<tr class="odd">
+<td align="left">agec</td>
+<td align="right">0.988</td>
+<td align="right">0.000</td>
+<td align="right">0.988</td>
+<td align="right">0.989</td>
+</tr>
+<tr class="even">
+<td align="left">I(agec^2)</td>
+<td align="right">1.000</td>
+<td align="right">0.000</td>
+<td align="right">1.000</td>
+<td align="right">1.000</td>
+</tr>
+<tr class="odd">
+<td align="left">stemjoblqc</td>
+<td align="right">1.229</td>
+<td align="right">0.009</td>
+<td align="right">1.212</td>
+<td align="right">1.246</td>
+</tr>
+<tr class="even">
+<td align="left">stemjobcountc</td>
+<td align="right">1.000</td>
+<td align="right">0.000</td>
+<td align="right">1.000</td>
+<td align="right">1.000</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="now-interact-race-and-nativity" class="section level2">
+<h2><span class="header-section-number">1.4</span> Now interact race and nativity</h2>
+<p>Given that the coefficient for foreign born is less than 1, I suspect that national origin might change that. Our baseline category is a white male, so it is conceivable that a white, foreign born male would have a lower probabilty of a match than a native born one. But I suspect the same is <em>not</em> true for, say, Asian males.</p>
+<p>Let’s look.</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="right">Estimate</th>
+<th align="right">robust.se</th>
+<th align="right">lcl</th>
+<th align="right">ucl</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">(Intercept)</td>
+<td align="right">0.478</td>
+<td align="right">0.003</td>
+<td align="right">0.472</td>
+<td align="right">0.484</td>
+</tr>
+<tr class="even">
+<td align="left">f_sexF</td>
+<td align="right">0.616</td>
+<td align="right">0.007</td>
+<td align="right">0.603</td>
+<td align="right">0.629</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceH</td>
+<td align="right">0.875</td>
+<td align="right">0.019</td>
+<td align="right">0.838</td>
+<td align="right">0.914</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceB</td>
+<td align="right">0.822</td>
+<td align="right">0.017</td>
+<td align="right">0.790</td>
+<td align="right">0.856</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceA</td>
+<td align="right">1.033</td>
+<td align="right">0.020</td>
+<td align="right">0.994</td>
+<td align="right">1.074</td>
+</tr>
+<tr class="even">
+<td align="left">f_fbfb</td>
+<td align="right">0.905</td>
+<td align="right">0.015</td>
+<td align="right">0.876</td>
+<td align="right">0.935</td>
+</tr>
+<tr class="odd">
+<td align="left">agec</td>
+<td align="right">0.988</td>
+<td align="right">0.000</td>
+<td align="right">0.988</td>
+<td align="right">0.989</td>
+</tr>
+<tr class="even">
+<td align="left">I(agec^2)</td>
+<td align="right">1.000</td>
+<td align="right">0.000</td>
+<td align="right">1.000</td>
+<td align="right">1.000</td>
+</tr>
+<tr class="odd">
+<td align="left">stemjoblqc</td>
+<td align="right">1.228</td>
+<td align="right">0.009</td>
+<td align="right">1.211</td>
+<td align="right">1.245</td>
+</tr>
+<tr class="even">
+<td align="left">stemjobcountc</td>
+<td align="right">1.000</td>
+<td align="right">0.000</td>
+<td align="right">1.000</td>
+<td align="right">1.000</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceH:f_fbfb</td>
+<td align="right">0.699</td>
+<td align="right">0.028</td>
+<td align="right">0.647</td>
+<td align="right">0.756</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceB:f_fbfb</td>
+<td align="right">0.916</td>
+<td align="right">0.043</td>
+<td align="right">0.835</td>
+<td align="right">1.004</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceA:f_fbfb</td>
+<td align="right">1.198</td>
+<td align="right">0.031</td>
+<td align="right">1.138</td>
+<td align="right">1.261</td>
+</tr>
+</tbody>
+</table>
+<p>Look at that. The effect for Asian alone is no longer statistically significant, but the interaction with Asian and Foreign Born does all the work that Asian did <em>without</em> the interaction. In other words, the matching effect for Asian men is <em>only</em> for foreign-born Asian men. Also, as expected, the effect is negative for foreign born Hispanic men, and unsurprisingly not statistically significant for foreign born blacks (given the relatively small number).</p>
+</div>
+</div>
+<div id="interaction-between-demography-and-geography" class="section level1">
+<h1><span class="header-section-number">2</span> Interaction between demography and geography</h1>
+<p>In the following sections we will interact each demographic variable (race, sex, nativity) with the LQ variable to see whether place attenuates or exaggerates the demographic effects.</p>
+<p>In each of the following sections we will interact race, sex, and nativity with the geographic variables. We expect better matching probabilities in high LQ locations.</p>
+<p>In this section I have maintained the interaction between race and nativity. That means we have three way interactions between race/nativity/LQ.</p>
+<p>Since it does more work, I only interact with the stemjob LQ variable. To be thorough, we should probably do both… but then the number of coefficients gets pretty crazy.</p>
+<div id="interact-sex" class="section level2">
+<h2><span class="header-section-number">2.1</span> Interact sex</h2>
+<p>What is the effect of geography for women?</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="right">Estimate</th>
+<th align="right">robust.se</th>
+<th align="right">lcl</th>
+<th align="right">ucl</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">(Intercept)</td>
+<td align="right">0.479</td>
+<td align="right">0.003</td>
+<td align="right">0.473</td>
+<td align="right">0.485</td>
+</tr>
+<tr class="even">
+<td align="left">stemjoblqc</td>
+<td align="right">1.215</td>
+<td align="right">0.009</td>
+<td align="right">1.197</td>
+<td align="right">1.233</td>
+</tr>
+<tr class="odd">
+<td align="left">f_sexF</td>
+<td align="right">0.611</td>
+<td align="right">0.007</td>
+<td align="right">0.597</td>
+<td align="right">0.624</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceH</td>
+<td align="right">0.875</td>
+<td align="right">0.019</td>
+<td align="right">0.838</td>
+<td align="right">0.913</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceB</td>
+<td align="right">0.823</td>
+<td align="right">0.017</td>
+<td align="right">0.790</td>
+<td align="right">0.857</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceA</td>
+<td align="right">1.034</td>
+<td align="right">0.020</td>
+<td align="right">0.994</td>
+<td align="right">1.074</td>
+</tr>
+<tr class="odd">
+<td align="left">f_fbfb</td>
+<td align="right">0.905</td>
+<td align="right">0.015</td>
+<td align="right">0.877</td>
+<td align="right">0.935</td>
+</tr>
+<tr class="even">
+<td align="left">agec</td>
+<td align="right">0.988</td>
+<td align="right">0.000</td>
+<td align="right">0.988</td>
+<td align="right">0.989</td>
+</tr>
+<tr class="odd">
+<td align="left">I(agec^2)</td>
+<td align="right">1.000</td>
+<td align="right">0.000</td>
+<td align="right">1.000</td>
+<td align="right">1.000</td>
+</tr>
+<tr class="even">
+<td align="left">stemjobcountc</td>
+<td align="right">1.000</td>
+<td align="right">0.000</td>
+<td align="right">1.000</td>
+<td align="right">1.000</td>
+</tr>
+<tr class="odd">
+<td align="left">stemjoblqc:f_sexF</td>
+<td align="right">1.058</td>
+<td align="right">0.020</td>
+<td align="right">1.019</td>
+<td align="right">1.099</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceH:f_fbfb</td>
+<td align="right">0.699</td>
+<td align="right">0.028</td>
+<td align="right">0.647</td>
+<td align="right">0.756</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceB:f_fbfb</td>
+<td align="right">0.915</td>
+<td align="right">0.043</td>
+<td align="right">0.835</td>
+<td align="right">1.003</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceA:f_fbfb</td>
+<td align="right">1.197</td>
+<td align="right">0.031</td>
+<td align="right">1.137</td>
+<td align="right">1.260</td>
+</tr>
+</tbody>
+</table>
+<p>Being in a high STEM job LQ city has a small but positive effect on the probability of a match for a woman, increasing anywhere between 2% and 10%.</p>
+<p>This effect might be a result of a lower relative number of women in STEM job concentrations.</p>
+<table>
+<caption>Proportion of women</caption>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="left">citynames</th>
+<th align="right">lqs</th>
+<th align="right">fprop</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">52</td>
+<td align="left">Atlanta, GA</td>
+<td align="right">0.98</td>
+<td align="right">0.30</td>
+</tr>
+<tr class="even">
+<td align="left">64</td>
+<td align="left">Austin, TX</td>
+<td align="right">1.48</td>
+<td align="right">0.26</td>
+</tr>
+<tr class="odd">
+<td align="left">72</td>
+<td align="left">Baltimore, MD</td>
+<td align="right">1.35</td>
+<td align="right">0.31</td>
+</tr>
+<tr class="even">
+<td align="left">112</td>
+<td align="left">Boston, MA</td>
+<td align="right">1.45</td>
+<td align="right">0.28</td>
+</tr>
+<tr class="odd">
+<td align="left">128</td>
+<td align="left">Buffalo, NY</td>
+<td align="right">0.71</td>
+<td align="right">0.24</td>
+</tr>
+<tr class="even">
+<td align="left">152</td>
+<td align="left">Charlotte, NC</td>
+<td align="right">0.83</td>
+<td align="right">0.24</td>
+</tr>
+<tr class="odd">
+<td align="left">160</td>
+<td align="left">Chicago, IL</td>
+<td align="right">0.84</td>
+<td align="right">0.27</td>
+</tr>
+<tr class="even">
+<td align="left">164</td>
+<td align="left">Cincinnati, OH</td>
+<td align="right">0.90</td>
+<td align="right">0.28</td>
+</tr>
+<tr class="odd">
+<td align="left">168</td>
+<td align="left">Cleveland, OH</td>
+<td align="right">0.82</td>
+<td align="right">0.22</td>
+</tr>
+<tr class="even">
+<td align="left">184</td>
+<td align="left">Columbus, OH</td>
+<td align="right">0.99</td>
+<td align="right">0.23</td>
+</tr>
+<tr class="odd">
+<td align="left">192</td>
+<td align="left">Dallas-Fort Worth, TX</td>
+<td align="right">1.03</td>
+<td align="right">0.25</td>
+</tr>
+<tr class="even">
+<td align="left">208</td>
+<td align="left">Denver, CO</td>
+<td align="right">1.38</td>
+<td align="right">0.25</td>
+</tr>
+<tr class="odd">
+<td align="left">216</td>
+<td align="left">Detroit, MI</td>
+<td align="right">1.00</td>
+<td align="right">0.27</td>
+</tr>
+<tr class="even">
+<td align="left">268</td>
+<td align="left">Fort Lauderdale, FL</td>
+<td align="right">0.57</td>
+<td align="right">0.27</td>
+</tr>
+<tr class="odd">
+<td align="left">284</td>
+<td align="left">Fresno, CA</td>
+<td align="right">0.38</td>
+<td align="right">0.20</td>
+</tr>
+<tr class="even">
+<td align="left">300</td>
+<td align="left">Grand Rapids, MI</td>
+<td align="right">0.79</td>
+<td align="right">0.27</td>
+</tr>
+<tr class="odd">
+<td align="left">312</td>
+<td align="left">Greensboro, NC</td>
+<td align="right">0.64</td>
+<td align="right">0.30</td>
+</tr>
+<tr class="even">
+<td align="left">336</td>
+<td align="left">Houston, TX</td>
+<td align="right">1.09</td>
+<td align="right">0.25</td>
+</tr>
+<tr class="odd">
+<td align="left">348</td>
+<td align="left">Indianapolis, IN</td>
+<td align="right">0.88</td>
+<td align="right">0.23</td>
+</tr>
+<tr class="even">
+<td align="left">359</td>
+<td align="left">Jacksonville, FL</td>
+<td align="right">0.75</td>
+<td align="right">0.26</td>
+</tr>
+<tr class="odd">
+<td align="left">376</td>
+<td align="left">Kansas City, MO</td>
+<td align="right">1.05</td>
+<td align="right">0.25</td>
+</tr>
+<tr class="even">
+<td align="left">412</td>
+<td align="left">Las Vegas, NV</td>
+<td align="right">0.42</td>
+<td align="right">0.27</td>
+</tr>
+<tr class="odd">
+<td align="left">448</td>
+<td align="left">Los Angeles, CA</td>
+<td align="right">0.78</td>
+<td align="right">0.26</td>
+</tr>
+<tr class="even">
+<td align="left">492</td>
+<td align="left">Memphis, TN</td>
+<td align="right">0.63</td>
+<td align="right">0.30</td>
+</tr>
+<tr class="odd">
+<td align="left">500</td>
+<td align="left">Miami, FL</td>
+<td align="right">0.43</td>
+<td align="right">0.29</td>
+</tr>
+<tr class="even">
+<td align="left">508</td>
+<td align="left">Milwaukee, WI</td>
+<td align="right">0.89</td>
+<td align="right">0.24</td>
+</tr>
+<tr class="odd">
+<td align="left">512</td>
+<td align="left">Minneapolis-St. Paul, MN</td>
+<td align="right">1.25</td>
+<td align="right">0.23</td>
+</tr>
+<tr class="even">
+<td align="left">519</td>
+<td align="left">Monmouth-Ocean, NJ</td>
+<td align="right">0.86</td>
+<td align="right">0.29</td>
+</tr>
+<tr class="odd">
+<td align="left">536</td>
+<td align="left">Nashville, TN</td>
+<td align="right">0.78</td>
+<td align="right">0.31</td>
+</tr>
+<tr class="even">
+<td align="left">556</td>
+<td align="left">New Orleans, LA</td>
+<td align="right">0.58</td>
+<td align="right">0.28</td>
+</tr>
+<tr class="odd">
+<td align="left">560</td>
+<td align="left">New York, NY</td>
+<td align="right">0.78</td>
+<td align="right">0.29</td>
+</tr>
+<tr class="even">
+<td align="left">572</td>
+<td align="left">Norfolk, VA</td>
+<td align="right">1.01</td>
+<td align="right">0.27</td>
+</tr>
+<tr class="odd">
+<td align="left">588</td>
+<td align="left">Oklahoma City, OK</td>
+<td align="right">0.76</td>
+<td align="right">0.22</td>
+</tr>
+<tr class="even">
+<td align="left">596</td>
+<td align="left">Orlando, FL</td>
+<td align="right">0.75</td>
+<td align="right">0.23</td>
+</tr>
+<tr class="odd">
+<td align="left">616</td>
+<td align="left">Philadelphia, PA</td>
+<td align="right">0.99</td>
+<td align="right">0.30</td>
+</tr>
+<tr class="even">
+<td align="left">620</td>
+<td align="left">Phoenix, AZ</td>
+<td align="right">0.96</td>
+<td align="right">0.24</td>
+</tr>
+<tr class="odd">
+<td align="left">628</td>
+<td align="left">Pittsburgh, PA</td>
+<td align="right">0.93</td>
+<td align="right">0.27</td>
+</tr>
+<tr class="even">
+<td align="left">644</td>
+<td align="left">Portland, OR</td>
+<td align="right">1.17</td>
+<td align="right">0.24</td>
+</tr>
+<tr class="odd">
+<td align="left">648</td>
+<td align="left">Providence, RI</td>
+<td align="right">0.76</td>
+<td align="right">0.27</td>
+</tr>
+<tr class="even">
+<td align="left">664</td>
+<td align="left">Raleigh-Durham, NC</td>
+<td align="right">1.66</td>
+<td align="right">0.31</td>
+</tr>
+<tr class="odd">
+<td align="left">676</td>
+<td align="left">Richmond, VA</td>
+<td align="right">1.05</td>
+<td align="right">0.30</td>
+</tr>
+<tr class="even">
+<td align="left">678</td>
+<td align="left">Riverside, CA</td>
+<td align="right">0.48</td>
+<td align="right">0.26</td>
+</tr>
+<tr class="odd">
+<td align="left">684</td>
+<td align="left">Rochester, NY</td>
+<td align="right">1.06</td>
+<td align="right">0.25</td>
+</tr>
+<tr class="even">
+<td align="left">692</td>
+<td align="left">Sacramento, CA</td>
+<td align="right">1.02</td>
+<td align="right">0.26</td>
+</tr>
+<tr class="odd">
+<td align="left">704</td>
+<td align="left">Salt Lake City, UT</td>
+<td align="right">0.93</td>
+<td align="right">0.24</td>
+</tr>
+<tr class="even">
+<td align="left">716</td>
+<td align="left">San Antonio, TX</td>
+<td align="right">1.01</td>
+<td align="right">0.19</td>
+</tr>
+<tr class="odd">
+<td align="left">724</td>
+<td align="left">San Diego, CA</td>
+<td align="right">0.73</td>
+<td align="right">0.26</td>
+</tr>
+<tr class="even">
+<td align="left">732</td>
+<td align="left">San Francisco, CA</td>
+<td align="right">1.29</td>
+<td align="right">0.25</td>
+</tr>
+<tr class="odd">
+<td align="left">736</td>
+<td align="left">San Jose, CA</td>
+<td align="right">1.42</td>
+<td align="right">0.28</td>
+</tr>
+<tr class="even">
+<td align="left">740</td>
+<td align="left">Seattle, WA</td>
+<td align="right">2.85</td>
+<td align="right">0.25</td>
+</tr>
+<tr class="odd">
+<td align="left">760</td>
+<td align="left">St. Louis, MO</td>
+<td align="right">1.85</td>
+<td align="right">0.24</td>
+</tr>
+<tr class="even">
+<td align="left">828</td>
+<td align="left">Tampa-St. Petersburg, FL</td>
+<td align="right">0.78</td>
+<td align="right">0.27</td>
+</tr>
+<tr class="odd">
+<td align="left">856</td>
+<td align="left">Tulsa, OK</td>
+<td align="right">0.76</td>
+<td align="right">0.20</td>
+</tr>
+<tr class="even">
+<td align="left">884</td>
+<td align="left">Washington, DC</td>
+<td align="right">1.82</td>
+<td align="right">0.29</td>
+</tr>
+<tr class="odd">
+<td align="left">896</td>
+<td align="left">West Palm Beach, FL</td>
+<td align="right">0.55</td>
+<td align="right">0.29</td>
+</tr>
+<tr class="even">
+<td align="left">![plot</td>
+<td align="left">of chunk sextab](./finalfi</td>
+<td align="right">nalmods</td>
+<td align="right">_files/figure-html/sextab.png)</td>
+</tr>
+<tr class="odd">
+<td align="left">Call:</td>
+<td align="left"></td>
+<td align="right"></td>
+<td align="right"></td>
+</tr>
+<tr class="even">
+<td align="left">lm(for</td>
+<td align="left">mula = fprop ~ lqs)</td>
+<td align="right"></td>
+<td align="right"></td>
+</tr>
+</tbody>
+</table>
+<p>Residuals: Min 1Q Median 3Q Max -0.06729 -0.01851 0.00223 0.01800 0.05160</p>
+<p>Coefficients: Estimate Std. Error t value Pr(&gt;|t|)<br />(Intercept) 0.25856 0.00986 26.22 &lt;2e-16 *** lqs 0.00333 0.00928 0.36 0.72<br />— Signif. codes: 0 ‘<em><strong>’ 0.001 ’</strong>’ 0.01 ’</em>’ 0.05 ‘.’ 0.1 ‘’ 1</p>
+<p>Residual standard error: 0.0283 on 53 degrees of freedom Multiple R-squared: 0.00242, Adjusted R-squared: -0.0164 F-statistic: 0.128 on 1 and 53 DF, p-value: 0.721</p>
+<p>Except that there is not much variation in the proportion of STEM degree holders who are women. What about proportion matched?</p>
+<table>
+<caption>Proportion of women</caption>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="left">citynames</th>
+<th align="right">lqs</th>
+<th align="right">fprop</th>
+<th align="right">fpropmatch</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">52</td>
+<td align="left">Atlanta, GA</td>
+<td align="right">0.98</td>
+<td align="right">0.30</td>
+<td align="right">0.21</td>
+</tr>
+<tr class="even">
+<td align="left">64</td>
+<td align="left">Austin, TX</td>
+<td align="right">1.48</td>
+<td align="right">0.26</td>
+<td align="right">0.17</td>
+</tr>
+<tr class="odd">
+<td align="left">72</td>
+<td align="left">Baltimore, MD</td>
+<td align="right">1.35</td>
+<td align="right">0.31</td>
+<td align="right">0.25</td>
+</tr>
+<tr class="even">
+<td align="left">112</td>
+<td align="left">Boston, MA</td>
+<td align="right">1.45</td>
+<td align="right">0.28</td>
+<td align="right">0.20</td>
+</tr>
+<tr class="odd">
+<td align="left">128</td>
+<td align="left">Buffalo, NY</td>
+<td align="right">0.71</td>
+<td align="right">0.24</td>
+<td align="right">0.16</td>
+</tr>
+<tr class="even">
+<td align="left">152</td>
+<td align="left">Charlotte, NC</td>
+<td align="right">0.83</td>
+<td align="right">0.24</td>
+<td align="right">0.18</td>
+</tr>
+<tr class="odd">
+<td align="left">160</td>
+<td align="left">Chicago, IL</td>
+<td align="right">0.84</td>
+<td align="right">0.27</td>
+<td align="right">0.19</td>
+</tr>
+<tr class="even">
+<td align="left">164</td>
+<td align="left">Cincinnati, OH</td>
+<td align="right">0.90</td>
+<td align="right">0.28</td>
+<td align="right">0.23</td>
+</tr>
+<tr class="odd">
+<td align="left">168</td>
+<td align="left">Cleveland, OH</td>
+<td align="right">0.82</td>
+<td align="right">0.22</td>
+<td align="right">0.14</td>
+</tr>
+<tr class="even">
+<td align="left">184</td>
+<td align="left">Columbus, OH</td>
+<td align="right">0.99</td>
+<td align="right">0.23</td>
+<td align="right">0.15</td>
+</tr>
+<tr class="odd">
+<td align="left">192</td>
+<td align="left">Dallas-Fort Worth, TX</td>
+<td align="right">1.03</td>
+<td align="right">0.25</td>
+<td align="right">0.17</td>
+</tr>
+<tr class="even">
+<td align="left">208</td>
+<td align="left">Denver, CO</td>
+<td align="right">1.38</td>
+<td align="right">0.25</td>
+<td align="right">0.17</td>
+</tr>
+<tr class="odd">
+<td align="left">216</td>
+<td align="left">Detroit, MI</td>
+<td align="right">1.00</td>
+<td align="right">0.27</td>
+<td align="right">0.16</td>
+</tr>
+<tr class="even">
+<td align="left">268</td>
+<td align="left">Fort Lauderdale, FL</td>
+<td align="right">0.57</td>
+<td align="right">0.27</td>
+<td align="right">0.16</td>
+</tr>
+<tr class="odd">
+<td align="left">284</td>
+<td align="left">Fresno, CA</td>
+<td align="right">0.38</td>
+<td align="right">0.20</td>
+<td align="right">0.10</td>
+</tr>
+<tr class="even">
+<td align="left">300</td>
+<td align="left">Grand Rapids, MI</td>
+<td align="right">0.79</td>
+<td align="right">0.27</td>
+<td align="right">0.16</td>
+</tr>
+<tr class="odd">
+<td align="left">312</td>
+<td align="left">Greensboro, NC</td>
+<td align="right">0.64</td>
+<td align="right">0.30</td>
+<td align="right">0.17</td>
+</tr>
+<tr class="even">
+<td align="left">336</td>
+<td align="left">Houston, TX</td>
+<td align="right">1.09</td>
+<td align="right">0.25</td>
+<td align="right">0.17</td>
+</tr>
+<tr class="odd">
+<td align="left">348</td>
+<td align="left">Indianapolis, IN</td>
+<td align="right">0.88</td>
+<td align="right">0.23</td>
+<td align="right">0.18</td>
+</tr>
+<tr class="even">
+<td align="left">359</td>
+<td align="left">Jacksonville, FL</td>
+<td align="right">0.75</td>
+<td align="right">0.26</td>
+<td align="right">0.18</td>
+</tr>
+<tr class="odd">
+<td align="left">376</td>
+<td align="left">Kansas City, MO</td>
+<td align="right">1.05</td>
+<td align="right">0.25</td>
+<td align="right">0.19</td>
+</tr>
+<tr class="even">
+<td align="left">412</td>
+<td align="left">Las Vegas, NV</td>
+<td align="right">0.42</td>
+<td align="right">0.27</td>
+<td align="right">0.20</td>
+</tr>
+<tr class="odd">
+<td align="left">448</td>
+<td align="left">Los Angeles, CA</td>
+<td align="right">0.78</td>
+<td align="right">0.26</td>
+<td align="right">0.17</td>
+</tr>
+<tr class="even">
+<td align="left">492</td>
+<td align="left">Memphis, TN</td>
+<td align="right">0.63</td>
+<td align="right">0.30</td>
+<td align="right">0.24</td>
+</tr>
+<tr class="odd">
+<td align="left">500</td>
+<td align="left">Miami, FL</td>
+<td align="right">0.43</td>
+<td align="right">0.29</td>
+<td align="right">0.18</td>
+</tr>
+<tr class="even">
+<td align="left">508</td>
+<td align="left">Milwaukee, WI</td>
+<td align="right">0.89</td>
+<td align="right">0.24</td>
+<td align="right">0.16</td>
+</tr>
+<tr class="odd">
+<td align="left">512</td>
+<td align="left">Minneapolis-St. Paul, MN</td>
+<td align="right">1.25</td>
+<td align="right">0.23</td>
+<td align="right">0.15</td>
+</tr>
+<tr class="even">
+<td align="left">519</td>
+<td align="left">Monmouth-Ocean, NJ</td>
+<td align="right">0.86</td>
+<td align="right">0.29</td>
+<td align="right">0.17</td>
+</tr>
+<tr class="odd">
+<td align="left">536</td>
+<td align="left">Nashville, TN</td>
+<td align="right">0.78</td>
+<td align="right">0.31</td>
+<td align="right">0.15</td>
+</tr>
+<tr class="even">
+<td align="left">556</td>
+<td align="left">New Orleans, LA</td>
+<td align="right">0.58</td>
+<td align="right">0.28</td>
+<td align="right">0.23</td>
+</tr>
+<tr class="odd">
+<td align="left">560</td>
+<td align="left">New York, NY</td>
+<td align="right">0.78</td>
+<td align="right">0.29</td>
+<td align="right">0.19</td>
+</tr>
+<tr class="even">
+<td align="left">572</td>
+<td align="left">Norfolk, VA</td>
+<td align="right">1.01</td>
+<td align="right">0.27</td>
+<td align="right">0.17</td>
+</tr>
+<tr class="odd">
+<td align="left">588</td>
+<td align="left">Oklahoma City, OK</td>
+<td align="right">0.76</td>
+<td align="right">0.22</td>
+<td align="right">0.14</td>
+</tr>
+<tr class="even">
+<td align="left">596</td>
+<td align="left">Orlando, FL</td>
+<td align="right">0.75</td>
+<td align="right">0.23</td>
+<td align="right">0.15</td>
+</tr>
+<tr class="odd">
+<td align="left">616</td>
+<td align="left">Philadelphia, PA</td>
+<td align="right">0.99</td>
+<td align="right">0.30</td>
+<td align="right">0.20</td>
+</tr>
+<tr class="even">
+<td align="left">620</td>
+<td align="left">Phoenix, AZ</td>
+<td align="right">0.96</td>
+<td align="right">0.24</td>
+<td align="right">0.18</td>
+</tr>
+<tr class="odd">
+<td align="left">628</td>
+<td align="left">Pittsburgh, PA</td>
+<td align="right">0.93</td>
+<td align="right">0.27</td>
+<td align="right">0.16</td>
+</tr>
+<tr class="even">
+<td align="left">644</td>
+<td align="left">Portland, OR</td>
+<td align="right">1.17</td>
+<td align="right">0.24</td>
+<td align="right">0.13</td>
+</tr>
+<tr class="odd">
+<td align="left">648</td>
+<td align="left">Providence, RI</td>
+<td align="right">0.76</td>
+<td align="right">0.27</td>
+<td align="right">0.16</td>
+</tr>
+<tr class="even">
+<td align="left">664</td>
+<td align="left">Raleigh-Durham, NC</td>
+<td align="right">1.66</td>
+<td align="right">0.31</td>
+<td align="right">0.22</td>
+</tr>
+<tr class="odd">
+<td align="left">676</td>
+<td align="left">Richmond, VA</td>
+<td align="right">1.05</td>
+<td align="right">0.30</td>
+<td align="right">0.21</td>
+</tr>
+<tr class="even">
+<td align="left">678</td>
+<td align="left">Riverside, CA</td>
+<td align="right">0.48</td>
+<td align="right">0.26</td>
+<td align="right">0.16</td>
+</tr>
+<tr class="odd">
+<td align="left">684</td>
+<td align="left">Rochester, NY</td>
+<td align="right">1.06</td>
+<td align="right">0.25</td>
+<td align="right">0.15</td>
+</tr>
+<tr class="even">
+<td align="left">692</td>
+<td align="left">Sacramento, CA</td>
+<td align="right">1.02</td>
+<td align="right">0.26</td>
+<td align="right">0.22</td>
+</tr>
+<tr class="odd">
+<td align="left">704</td>
+<td align="left">Salt Lake City, UT</td>
+<td align="right">0.93</td>
+<td align="right">0.24</td>
+<td align="right">0.18</td>
+</tr>
+<tr class="even">
+<td align="left">716</td>
+<td align="left">San Antonio, TX</td>
+<td align="right">1.01</td>
+<td align="right">0.19</td>
+<td align="right">0.12</td>
+</tr>
+<tr class="odd">
+<td align="left">724</td>
+<td align="left">San Diego, CA</td>
+<td align="right">0.73</td>
+<td align="right">0.26</td>
+<td align="right">0.21</td>
+</tr>
+<tr class="even">
+<td align="left">732</td>
+<td align="left">San Francisco, CA</td>
+<td align="right">1.29</td>
+<td align="right">0.25</td>
+<td align="right">0.20</td>
+</tr>
+<tr class="odd">
+<td align="left">736</td>
+<td align="left">San Jose, CA</td>
+<td align="right">1.42</td>
+<td align="right">0.28</td>
+<td align="right">0.20</td>
+</tr>
+<tr class="even">
+<td align="left">740</td>
+<td align="left">Seattle, WA</td>
+<td align="right">2.85</td>
+<td align="right">0.25</td>
+<td align="right">0.18</td>
+</tr>
+<tr class="odd">
+<td align="left">760</td>
+<td align="left">St. Louis, MO</td>
+<td align="right">1.85</td>
+<td align="right">0.24</td>
+<td align="right">0.16</td>
+</tr>
+<tr class="even">
+<td align="left">828</td>
+<td align="left">Tampa-St. Petersburg, FL</td>
+<td align="right">0.78</td>
+<td align="right">0.27</td>
+<td align="right">0.15</td>
+</tr>
+<tr class="odd">
+<td align="left">856</td>
+<td align="left">Tulsa, OK</td>
+<td align="right">0.76</td>
+<td align="right">0.20</td>
+<td align="right">0.18</td>
+</tr>
+<tr class="even">
+<td align="left">884</td>
+<td align="left">Washington, DC</td>
+<td align="right">1.82</td>
+<td align="right">0.29</td>
+<td align="right">0.23</td>
+</tr>
+<tr class="odd">
+<td align="left">896</td>
+<td align="left">West Palm Beach, FL</td>
+<td align="right">0.55</td>
+<td align="right">0.29</td>
+<td align="right">0.18</td>
+</tr>
+<tr class="even">
+<td align="left">![plot</td>
+<td align="left">of chunk sextab2](./finalf</td>
+<td align="right">inalmod</td>
+<td align="right">s_files/</td>
+<td align="right">figure-html/sextab2.png)</td>
+</tr>
+<tr class="odd">
+<td align="left">Call:</td>
+<td align="left"></td>
+<td align="right"></td>
+<td align="right"></td>
+<td align="right"></td>
+</tr>
+<tr class="even">
+<td align="left">lm(for</td>
+<td align="left">mula = fpropmatch ~ lqs)</td>
+<td align="right"></td>
+<td align="right"></td>
+<td align="right"></td>
+</tr>
+</tbody>
+</table>
+<p>Residuals: Min 1Q Median 3Q Max -0.06801 -0.02110 -0.00278 0.01645 0.06919</p>
+<p>Coefficients: Estimate Std. Error t value Pr(&gt;|t|)<br />(Intercept) 0.16613 0.01056 15.73 &lt;2e-16 *** lqs 0.01270 0.00994 1.28 0.21<br />— Signif. codes: 0 ‘<em><strong>’ 0.001 ’</strong>’ 0.01 ’</em>’ 0.05 ‘.’ 0.1 ‘’ 1</p>
+<p>Residual standard error: 0.0303 on 53 degrees of freedom Multiple R-squared: 0.0299, Adjusted R-squared: 0.0116 F-statistic: 1.63 on 1 and 53 DF, p-value: 0.207</p>
+<p>So, there is a mild association (higher LQ corresponds to a higher proportion of women who are matched), but the effect is weak.</p>
+</div>
+<div id="interact-nativity" class="section level2">
+<h2><span class="header-section-number">2.2</span> Interact nativity</h2>
+<table>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="right">Estimate</th>
+<th align="right">robust.se</th>
+<th align="right">lcl</th>
+<th align="right">ucl</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">(Intercept)</td>
+<td align="right">0.477</td>
+<td align="right">0.003</td>
+<td align="right">0.471</td>
+<td align="right">0.483</td>
+</tr>
+<tr class="even">
+<td align="left">f_sexF</td>
+<td align="right">0.616</td>
+<td align="right">0.007</td>
+<td align="right">0.603</td>
+<td align="right">0.629</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceH</td>
+<td align="right">0.876</td>
+<td align="right">0.019</td>
+<td align="right">0.839</td>
+<td align="right">0.915</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceB</td>
+<td align="right">0.823</td>
+<td align="right">0.017</td>
+<td align="right">0.790</td>
+<td align="right">0.857</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceA</td>
+<td align="right">1.032</td>
+<td align="right">0.020</td>
+<td align="right">0.992</td>
+<td align="right">1.072</td>
+</tr>
+<tr class="even">
+<td align="left">f_fbfb</td>
+<td align="right">0.909</td>
+<td align="right">0.015</td>
+<td align="right">0.880</td>
+<td align="right">0.939</td>
+</tr>
+<tr class="odd">
+<td align="left">agec</td>
+<td align="right">0.988</td>
+<td align="right">0.000</td>
+<td align="right">0.988</td>
+<td align="right">0.989</td>
+</tr>
+<tr class="even">
+<td align="left">I(agec^2)</td>
+<td align="right">1.000</td>
+<td align="right">0.000</td>
+<td align="right">1.000</td>
+<td align="right">1.000</td>
+</tr>
+<tr class="odd">
+<td align="left">stemjoblqc</td>
+<td align="right">1.243</td>
+<td align="right">0.012</td>
+<td align="right">1.220</td>
+<td align="right">1.267</td>
+</tr>
+<tr class="even">
+<td align="left">stemjobcountc</td>
+<td align="right">1.000</td>
+<td align="right">0.000</td>
+<td align="right">1.000</td>
+<td align="right">1.000</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceH:f_fbfb</td>
+<td align="right">0.696</td>
+<td align="right">0.028</td>
+<td align="right">0.644</td>
+<td align="right">0.752</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceB:f_fbfb</td>
+<td align="right">0.914</td>
+<td align="right">0.043</td>
+<td align="right">0.834</td>
+<td align="right">1.002</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceA:f_fbfb</td>
+<td align="right">1.203</td>
+<td align="right">0.032</td>
+<td align="right">1.142</td>
+<td align="right">1.267</td>
+</tr>
+<tr class="even">
+<td align="left">f_fbfb:stemjoblqc</td>
+<td align="right">0.971</td>
+<td align="right">0.014</td>
+<td align="right">0.944</td>
+<td align="right">0.999</td>
+</tr>
+</tbody>
+</table>
+<p>Note the direction change from the previous version of this file I sent. Calculating the LQ of STEM jobs correctly, now has made the effect modification for the foreign born <em>negative</em>. Being in a higher LQ city <strong>lowers</strong> (slightly) the effect modification for a match.</p>
+<p>This is hard to believe.</p>
+<p>Although, an anecdote might inform. Kristi Copeland’s husband is from the subcontinent, and his first job was in Cleveland with Booz, Allen, and Hamilton. There were <em>lots</em> of foreign born in that office and they all joked that they accepted the job in Cleveland because they didn’t know better.</p>
+</div>
+<div id="interact-race" class="section level2">
+<h2><span class="header-section-number">2.3</span> Interact race</h2>
+<table>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="right">Estimate</th>
+<th align="right">robust.se</th>
+<th align="right">lcl</th>
+<th align="right">ucl</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">(Intercept)</td>
+<td align="right">0.477</td>
+<td align="right">0.003</td>
+<td align="right">0.471</td>
+<td align="right">0.483</td>
+</tr>
+<tr class="even">
+<td align="left">f_sexF</td>
+<td align="right">0.616</td>
+<td align="right">0.007</td>
+<td align="right">0.603</td>
+<td align="right">0.629</td>
+</tr>
+<tr class="odd">
+<td align="left">f_fbfb</td>
+<td align="right">0.906</td>
+<td align="right">0.015</td>
+<td align="right">0.877</td>
+<td align="right">0.936</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceH</td>
+<td align="right">0.874</td>
+<td align="right">0.019</td>
+<td align="right">0.837</td>
+<td align="right">0.913</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceB</td>
+<td align="right">0.815</td>
+<td align="right">0.017</td>
+<td align="right">0.782</td>
+<td align="right">0.850</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceA</td>
+<td align="right">1.048</td>
+<td align="right">0.021</td>
+<td align="right">1.008</td>
+<td align="right">1.090</td>
+</tr>
+<tr class="odd">
+<td align="left">stemjoblqc</td>
+<td align="right">1.243</td>
+<td align="right">0.012</td>
+<td align="right">1.219</td>
+<td align="right">1.268</td>
+</tr>
+<tr class="even">
+<td align="left">stemjobcountc</td>
+<td align="right">1.000</td>
+<td align="right">0.000</td>
+<td align="right">1.000</td>
+<td align="right">1.000</td>
+</tr>
+<tr class="odd">
+<td align="left">agec</td>
+<td align="right">0.988</td>
+<td align="right">0.000</td>
+<td align="right">0.988</td>
+<td align="right">0.989</td>
+</tr>
+<tr class="even">
+<td align="left">I(agec^2)</td>
+<td align="right">1.000</td>
+<td align="right">0.000</td>
+<td align="right">1.000</td>
+<td align="right">1.000</td>
+</tr>
+<tr class="odd">
+<td align="left">f_fbfb:f_raceH</td>
+<td align="right">0.704</td>
+<td align="right">0.028</td>
+<td align="right">0.651</td>
+<td align="right">0.761</td>
+</tr>
+<tr class="even">
+<td align="left">f_fbfb:f_raceB</td>
+<td align="right">0.917</td>
+<td align="right">0.043</td>
+<td align="right">0.836</td>
+<td align="right">1.005</td>
+</tr>
+<tr class="odd">
+<td align="left">f_fbfb:f_raceA</td>
+<td align="right">1.195</td>
+<td align="right">0.031</td>
+<td align="right">1.135</td>
+<td align="right">1.258</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceH:stemjoblqc</td>
+<td align="right">1.069</td>
+<td align="right">0.037</td>
+<td align="right">0.999</td>
+<td align="right">1.143</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceB:stemjoblqc</td>
+<td align="right">1.105</td>
+<td align="right">0.048</td>
+<td align="right">1.015</td>
+<td align="right">1.202</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceA:stemjoblqc</td>
+<td align="right">0.952</td>
+<td align="right">0.048</td>
+<td align="right">0.925</td>
+<td align="right">0.980</td>
+</tr>
+</tbody>
+</table>
+<p>Perhaps a little surprisingly, Asian men, are a little <em>less</em> likely to be matched in high STEM job LQ cities than white men. For Hispanic men it is marginally positive, but not well estimated enough to be definitive, and for Black men, strongly positive.</p>
+<p>So, now we need to put all of this together.</p>
+</div>
+</div>
+<div id="model-based-assessment-of-interactions" class="section level1">
+<h1><span class="header-section-number">3</span> Model-based assessment of interactions</h1>
+<p>I think the more standard way is to put all interactions into a single model, then test the differences between models, pulling one out at a time.</p>
+<p>But, here I will just present a table of each model estimated separately. There are many roads to Rome…</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="right">Estimate</th>
+<th align="right">robust.se</th>
+<th align="right">lcl</th>
+<th align="right">ucl</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">(Intercept)</td>
+<td align="right">0.478</td>
+<td align="right">0.003</td>
+<td align="right">0.471</td>
+<td align="right">0.484</td>
+</tr>
+<tr class="even">
+<td align="left">stemjoblqc</td>
+<td align="right">1.231</td>
+<td align="right">0.013</td>
+<td align="right">1.205</td>
+<td align="right">1.256</td>
+</tr>
+<tr class="odd">
+<td align="left">stemjobcountc</td>
+<td align="right">1.000</td>
+<td align="right">0.000</td>
+<td align="right">1.000</td>
+<td align="right">1.000</td>
+</tr>
+<tr class="even">
+<td align="left">f_sexF</td>
+<td align="right">0.611</td>
+<td align="right">0.007</td>
+<td align="right">0.598</td>
+<td align="right">0.624</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceH</td>
+<td align="right">0.874</td>
+<td align="right">0.019</td>
+<td align="right">0.837</td>
+<td align="right">0.913</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceB</td>
+<td align="right">0.816</td>
+<td align="right">0.017</td>
+<td align="right">0.782</td>
+<td align="right">0.851</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceA</td>
+<td align="right">1.050</td>
+<td align="right">0.022</td>
+<td align="right">1.009</td>
+<td align="right">1.094</td>
+</tr>
+<tr class="even">
+<td align="left">f_fbfb</td>
+<td align="right">0.905</td>
+<td align="right">0.015</td>
+<td align="right">0.876</td>
+<td align="right">0.936</td>
+</tr>
+<tr class="odd">
+<td align="left">agec</td>
+<td align="right">0.988</td>
+<td align="right">0.000</td>
+<td align="right">0.988</td>
+<td align="right">0.989</td>
+</tr>
+<tr class="even">
+<td align="left">I(agec^2)</td>
+<td align="right">1.000</td>
+<td align="right">0.000</td>
+<td align="right">1.000</td>
+<td align="right">1.000</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceH:f_fbfb</td>
+<td align="right">0.705</td>
+<td align="right">0.028</td>
+<td align="right">0.652</td>
+<td align="right">0.762</td>
+</tr>
+<tr class="even">
+<td align="left">f_raceB:f_fbfb</td>
+<td align="right">0.917</td>
+<td align="right">0.043</td>
+<td align="right">0.836</td>
+<td align="right">1.005</td>
+</tr>
+<tr class="odd">
+<td align="left">f_raceA:f_fbfb</td>
+<td align="right">1.193</td>
+<td align="right">0.032</td>
+<td align="right">1.133</td>
+<td align="right">1.256</td>
+</tr>
+<tr class="even">
+<td align="left">stemjoblqc:f_raceH</td>
+<td align="right">1.062</td>
+<td align="right">0.037</td>
+<td align="right">0.992</td>
+<td align="right">1.137</td>
+</tr>
+<tr class="odd">
+<td align="left">stemjoblqc:f_raceB</td>
+<td align="right">1.096</td>
+<td align="right">0.047</td>
+<td align="right">1.007</td>
+<td align="right">1.193</td>
+</tr>
+<tr class="even">
+<td align="left">stemjoblqc:f_raceA</td>
+<td align="right">0.944</td>
+<td align="right">0.019</td>
+<td align="right">0.908</td>
+<td align="right">0.982</td>
+</tr>
+<tr class="odd">
+<td align="left">stemjoblqc:f_sexF</td>
+<td align="right">1.059</td>
+<td align="right">0.021</td>
+<td align="right">1.019</td>
+<td align="right">1.100</td>
+</tr>
+<tr class="even">
+<td align="left">stemjoblqc:f_fbfb</td>
+<td align="right">1.007</td>
+<td align="right">0.019</td>
+<td align="right">0.970</td>
+<td align="right">1.046</td>
+</tr>
+</tbody>
+</table>
+<p>Now figure out a way to display all of that together….</p>
+<div id="model-comparison" class="section level2">
+<h2><span class="header-section-number">3.1</span> Model Comparison</h2>
+<p>Now remove factors and compare the models.</p>
+<pre><code>## Analysis of Deviance Table
+## 
+## Model 1: match ~ stemjoblqc + stemjobcountc + f_sex + f_race + f_fb + 
+##     agec + I(agec^2) + f_race:f_fb + stemjoblqc:f_race + stemjoblqc:f_fb
+## Model 2: match ~ stemjoblqc + stemjobcountc + f_sex + f_race * f_fb + 
+##     agec + I(agec^2) + stemjoblqc:f_race + stemjoblqc:f_sex + 
+##     stemjoblqc:f_fb
+##   Resid. Df Resid. Dev Df Deviance Pr(&gt;Chi)  
+## 1     92630      64318                       
+## 2     92629      64313  1     4.75    0.029 *
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
+<pre><code>## Analysis of Deviance Table
+## 
+## Model 1: match ~ stemjoblqc + stemjobcountc + f_sex + f_race + f_fb + 
+##     agec + I(agec^2) + f_race:f_fb + stemjoblqc:f_race + stemjoblqc:f_sex
+## Model 2: match ~ stemjoblqc + stemjobcountc + f_sex + f_race * f_fb + 
+##     agec + I(agec^2) + stemjoblqc:f_race + stemjoblqc:f_sex + 
+##     stemjoblqc:f_fb
+##   Resid. Df Resid. Dev Df Deviance Pr(&gt;Chi)
+## 1     92630      64313                     
+## 2     92629      64313  1    0.062      0.8</code></pre>
+<pre><code>## Analysis of Deviance Table
+## 
+## Model 1: match ~ stemjoblqc + stemjobcountc + f_sex + f_race + f_fb + 
+##     agec + I(agec^2) + f_race:f_fb + stemjoblqc:f_sex + stemjoblqc:f_fb
+## Model 2: match ~ stemjoblqc + stemjobcountc + f_sex + f_race * f_fb + 
+##     agec + I(agec^2) + stemjoblqc:f_race + stemjoblqc:f_sex + 
+##     stemjoblqc:f_fb
+##   Resid. Df Resid. Dev Df Deviance Pr(&gt;Chi)  
+## 1     92632      64324                       
+## 2     92629      64313  3     10.7    0.013 *
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
+<pre><code>## 
+## 
+##    base      sex   nativity     race      all
+## -------  -------  ---------  -------  -------
+##  141591   141598     141600   141612   141631</code></pre>
+<p>So, again, results are mixed. Looking at the Wald tests (in the previous section) each interaction term has some explanatory power –or, rather some subsets of each do. But the overall model fit is <em>worse</em> with all the interactions in. And the best fitting model overall is the one with no interactions.</p>
+<p>I suspect that with our reduced number of observations (now down to ~ 93,000) with some really small cell sizes (e.g. foreign born black women with a STEM degree) the BIC is telling us that we do not have enough data to make a strong case for the effects we see with the coefficients.</p>
+</div>
+</div>
+<div id="predicted-probabilities" class="section level1">
+<h1><span class="header-section-number">4</span> Predicted probabilities</h1>
+<p>(not shown)</p>
+</div>
+
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://c328740.ssl.cf1.rackcdn.com/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,573 @@
+---
+title: "Model Output"
+date: "November 12, 2014"
+output: 
+    html_document:
+        number_sections: true
+        css: basic.css
+        theme: null
+        highlight: null
+        keep_md: true
+---
+
+```{r initialize, eval=T, echo=F, collapse=T, results='hide'}
+# setwd('~/win/project/ellis-nsf10/STEM/analysis')
+setwd('~/Documents/Geog/MigProject/STEM/analysis')
+require(sandwich)
+require(msm)
+require(knitr)
+
+require(RSQLite)
+
+sqlite = dbDriver("SQLite")
+dbpath = "../data/stemdata.sqlite"
+
+conn = dbConnect(sqlite, dbpath)
+
+query = "SELECT * from citymapper;"
+
+########################################################
+start.time  =  proc.time()
+
+q.obj = dbSendQuery(conn, query)
+
+# Retrieve Query results into a data frame
+citymapper = fetch(q.obj, n=-1)
+
+print(paste("time in minutes: ", round(proc.time()[3] - start.time[3], 3) / 60, sep=""))
+########################################################
+
+# Clean up the query object (no longer needed)
+dbClearResult(q.obj)
+
+# Get the dataframe of stem degree holders
+# this came from 'makedata.R'
+# also available are acs.stemdeg and acs.ce
+# The one below just has a couple of additional transformed variables
+# That acs.stemdeg does not
+a = read.csv(file = "../data/acs.stemdeg.useme.csv")
+
+# and my cute plotting functions
+source("plotfuns.R")
+
+# And this stupidity...
+citynames = c("Atlanta, GA", "Austin, TX", "Baltimore, MD", "Boston, MA", "Buffalo, NY", "Charlotte, NC", "Chicago, IL", "Cincinnati, OH", "Cleveland, OH", "Columbus, OH", "Dallas-Fort Worth, TX", "Denver, CO", "Detroit, MI", "Fort Lauderdale, FL", "Fresno, CA", "Grand Rapids, MI", "Greensboro, NC", "Houston, TX", "Indianapolis, IN", "Jacksonville, FL", "Kansas City, MO", "Las Vegas, NV", "Los Angeles, CA", "Memphis, TN", "Miami, FL", "Milwaukee, WI", "Minneapolis-St. Paul, MN", "Monmouth-Ocean, NJ", "Nashville, TN", "New Orleans, LA", "New York, NY", "Norfolk, VA", "Oklahoma City, OK", "Orlando, FL", "Philadelphia, PA", "Phoenix, AZ", "Pittsburgh, PA", "Portland, OR", "Providence, RI", "Raleigh-Durham, NC", "Richmond, VA", "Riverside, CA", "Rochester, NY", "Sacramento, CA", "Salt Lake City, UT", "San Antonio, TX", "San Diego, CA", "San Francisco, CA", "San Jose, CA", "Seattle, WA", "St. Louis, MO", "Tampa-St. Petersburg, FL", "Tulsa, OK", "Washington, DC", "West Palm Beach, FL")
+
+# Adrian Raftery's BIC.lm function
+BIC.lm.a = function (lm.object) {
+    # Computes BIC for a fixed effects regression model estimated using lm.
+    # The definition of BIC is the same as that used in lmer.
+    sigma2 = mean (lm.object$residuals^2)
+    df = summary(lm.object)$df
+    n = df[1] + df[2]
+    npar = df[1] + 1
+    
+    loglik = (-n/2) * (log(2*pi) + log(sigma2) + 1)
+    BIC = -2*loglik + npar*log(n)
+    return(BIC)
+}
+
+# A function for calculating the log-likelihood used in AR's function
+ll.a = function(mod) {
+    sigma2 = mean (mod$residuals^2)
+    df = summary(mod)$df
+    n = df[1] + df[2]
+    loglik = (-n/2) * (log(2*pi) + log(sigma2) + 1)
+    df = df[3]
+    npar = df[1] + 1
+
+    return(list(log.likelihood = loglik, parameters = npar, df = df, n = n))
+}
+
+# Uses the built-in method for extracting logLikelihood
+# results correspond more closely with LR tests, etc.
+BIC.lm = function(mod) {
+    loglik = as.numeric(logLik(mod))
+    df = summary(mod)$df
+    npar = df[1] + 1
+    n = df[1] + df[2]
+    
+    BIC = -2 * loglik + npar * log(n)
+    return(BIC)
+}
+
+```
+
+# Model
+
+Main effects, then interact sex, nativity, race. The intercept is a white male of average age (about 43.6 yrs) in a city with a mean STEM job LQ (about 1.12).
+
+```{r modprep, echo=FALSE, eval=TRUE, results='hide'}
+require(msm)
+
+# all of the following should have been taken care of in 
+# makedata.R
+# a = transform(a, stemjoblqc = stemjoblq - mean(stemjoblq))
+a[,"f_race"] = relevel(a[,"f_race"], ref = "W")
+a[,"f_sex"] = relevel(a[,"f_sex"], ref = "M")
+a[,"f_fb"] = relevel(a[,"f_fb"], ref = "nb")
+
+kable(data.frame(meanLQ = round(mean(a$stemjoblq), 2), mean.age = round(mean(a$age), 1)))
+```
+
+## LQ or log(count)?
+
+```{r lqorcount.mod, echo=FALSE, eval=TRUE, results='hide'}
+
+# mod.1 = glm(match ~ stemjoblq + f_race + f_sex + f_fb + agec + I(agec^2), data = a, family = quasibinomial(link = "log"), start = rep(0.5, 9))
+# if the above does not work...
+mod1 = glm(match ~ f_race + f_sex + f_fb + agec + I(agec^2), data = a, family = poisson)
+# mod.logit = glm(match ~ stemjoblqc + log(stemjobcount) + f_race + f_sex + f_fb + agec + I(agec^2), data = a, family = binomial(link = "logit"))
+
+summary(mod1)
+# Correlation between fitted and actual values
+# Which will always be poor since the outcome is 
+# The relative risk of match == 1
+cor(exp(mod1$fitted), a$match)^2
+
+# remove a factor at a time and test. How the fuck to report this...
+mod2 = update(mod1, . ~ . +log(stemjobcount))
+mod3 = update(mod1, . ~ . +stemjoblqc)
+mod4 = glm(match ~ f_race + f_sex + f_fb + agec + I(agec^2) + stemjoblqc + log(stemjobcount), data = a, family = poisson)
+
+mod1sum = summary(mod1)
+mod2sum = summary(mod2)
+mod3sum = summary(mod3)
+mod4sum = summary(mod4)
+
+1-pchisq(mod1sum$deviance, mod1sum$df.residual) # if this is sigificant we have a bad fit
+with(mod1, pchisq(deviance, df.residual, lower.tail = F)) # if this is sig, we have a poor fit
+with(mod2, pchisq(deviance, df.residual, lower.tail = F)) # if this is sig, we have a poor fit
+with(mod3, pchisq(deviance, df.residual, lower.tail = F)) # if this is sig, we have a poor fit
+with(mod4, pchisq(deviance, df.residual, lower.tail = F)) # if this is sig, we have a poor fit
+
+
+summary(mod2)
+summary(mod3)
+
+anova(mod1, mod2, test = "Chisq")
+anova(mod1, mod3, test = "Chisq")
+
+ll.1 = as.numeric(logLik(mod1))
+ll.2 = as.numeric(logLik(mod2))
+ll.3 = as.numeric(logLik(mod3))
+
+# Same as ANOVA
+pchisq(2 * (ll.2 - ll.1), df = (summary(mod2)$df[1] - summary(mod1)$df[1]), lower.tail = FALSE)
+pchisq(2 * (ll.3 - ll.1), df = (summary(mod3)$df[1] - summary(mod1)$df[1]), lower.tail = FALSE)
+
+# We have two ways of computing the BIC
+# The function adds 1 to the number of parameters
+BIC.lm(mod1) ; -2*(ll.1) + log(nrow(a)) * summary(mod1)$df[1]
+BIC.lm(mod2) ; -2*(ll.1) + log(nrow(a)) * summary(mod2)$df[1]
+BIC.lm(mod3) ; -2*(ll.1) + log(nrow(a)) * summary(mod3)$df[1]
+
+BIC.lm(mod2) ; BIC.lm(mod1) ; BIC.lm(mod2) - BIC.lm(mod1)
+BIC.lm(mod3) ; BIC.lm(mod1) ; BIC.lm(mod3) - BIC.lm(mod1)
+
+
+# LR test
+lr.test <- 2*(ll.2 - ll.1)
+lr.test.p <- pchisq(lr.test,df=(summary(mod2)$df[1] - summary(mod1)$df[1]),lower.tail=FALSE)
+
+# BIC
+bic.test.2 <- -2*(ll.2 - ll.1) + log(nrow(a)) * (summary(mod1)$df[1] + 1)
+bic.test.3 <- -2*(ll.3 - ll.1) + log(nrow(a)) * (summary(mod1)$df[1] + 1)
+bic.test.2
+bic.test.3
+```
+
+I don't like the latter bic.test method since it seems a little weird with the degrees of freedom. I don't know that the algebra is correct, because we just apply the penalty to the difference in doubled log likelihoods, rather than penalizing each and taking the difference. Plus, the way Chris was doing it, the parameter penalty will always be 1 (if you're just adding a single factor between models). Dunno. Seems fishy. Especially when we can calculate the BICs and take the differences?
+
+How to present the above:
+
+```{r lqorcount.pres, echo=FALSE, eval=TRUE, results='hide'}
+
+names = names(coef(mod4))
+c1 = exp(coef(mod1))
+c2 = exp(coef(mod2))
+c3 = exp(coef(mod3))
+c4 = exp(coef(mod4))
+
+# some foolishness to get equal length vectors
+c1 = c(c1, NA, NA)
+c2 = c(c2[1:8], NA, c2[9])
+c3 = c(c3, NA)
+
+ta = data.frame(variable = names, model1 = c1, model2 = c2, model3 = c3, model4 = c4, row.names = 1:length(names))
+kable(ta, digits = 3)
+
+bic1 = round(BIC.lm(mod1), 0)
+bic2 = round(BIC.lm(mod2), 0)
+bic3 = round(BIC.lm(mod3), 0)
+bic4 = round(BIC.lm(mod4), 0)
+
+ll.1 = round(as.numeric(logLik(mod1)), 0)
+ll.2 = round(as.numeric(logLik(mod2)), 0)
+ll.3 = round(as.numeric(logLik(mod3)), 0)
+ll.4 = round(as.numeric(logLik(mod4)), 0)
+
+namecol = c(names, "log Likelihood", "BIC")
+model1 = c(c1, ll.1, bic1)
+model2 = c(c2, ll.2, bic2)
+model3 = c(c3, ll.3, bic3)
+model4 = c(c4, ll.4, bic4)
+
+ta = data.frame(variable = namecol, model1, model2, model3, model4, row.names = 1:length(namecol))
+kable(ta, digits = 3)
+
+```
+
+|variable          |      model1|      model2|      model3|      model4|
+|:-----------------|-----------:|-----------:|-----------:|-----------:|
+|(Intercept)       |       0.419|       0.357|       0.417|       0.499|
+|f_raceA           |       1.216|       1.212|       1.177|       1.180|
+|f_raceB           |       0.792|       0.791|       0.801|       0.802|
+|f_raceH           |       0.710|       0.711|       0.738|       0.738|
+|f_sexF            |       0.645|       0.645|       0.646|       0.646|
+|f_fbfb            |       1.091|       1.088|       1.086|       1.089|
+|agec              |       0.987|       0.987|       0.987|       0.987|
+|I(agec^2)         |       1.000|       1.000|       1.000|       1.000|
+|stemjoblqc        |          NA|          NA|       1.271|       1.276|
+|log(stemjobcount) |          NA|       1.014|          NA|       0.985|
+|------------------|------------|------------|------------|------------|
+|log Likelihood    |     -130573|     -130569|     -130048|     -130043|
+|BIC               |      261255|      261259|      260216|      260219|
+
+
+## Main effects
+
+```{r maineffects.mod, echo=FALSE, eval=TRUE, results='hide'}
+
+# mod.1 = glm(match ~ stemjoblq + f_race + f_sex + f_fb + agec + I(agec^2), data = a, family = quasibinomial(link = "log"), start = rep(0.5, 9))
+# if the above does not work...
+mod.1 = glm(match ~ f_race + f_sex + f_fb + agec + I(agec^2), data = a, family = poisson)
+# summary(mod.1)
+
+cov.mod.1 = vcovHC(mod.1, type = "HC0")
+std.err.mod.1 = sqrt(diag(cov.mod.1))
+
+rmod1.est = data.frame(Estimate = coef(mod.1), "robust se" = std.err.mod.1, "Pr(>|z|)" = 2 * pnorm(abs(coef(mod.1)/std.err.mod.1), lower.tail = F),
+ lcl = coef(mod.1) - (1.96 * std.err.mod.1),
+ ucl = coef(mod.1) + (1.96 * std.err.mod.1))
+# signif(rmod1.est, 3)
+
+# To get the transformed standard errors
+s = deltamethod(
+    list(~exp(x1), ~exp(x2), ~exp(x3), ~exp(x4), ~exp(x5), ~exp(x6), ~exp(x7), ~exp(x8)), coef(mod.1), cov.mod.1)
+
+# relative risks
+rexp.est = exp(rmod1.est[,-3])
+rexp.est[, "robust.se"] = s
+# signif(rexp.est, 3)
+
+kable(rexp.est, digits = 3)
+mod.me.coef = sprintf('%1.3f (%1.3f)', rexp.est[,1], rexp.est[,2])
+data.frame(names(coef(mod.1)), mod.me.coef)
+thing = cbind(names(coef(mod.1)), mod.me.coef)
+
+ll = round(as.numeric(logLik(mod.1)), 0)
+bic = round(BIC.lm(mod.1), 0)
+
+kable(cbind(names(coef(mod.1)), mod.me.coef))
+```
+
+
+## Add LQ
+
+```{r lq.mod, echo=FALSE, eval=TRUE, results='hide'}
+
+mod.lq = glm(match ~ f_race + f_sex + f_fb + agec + I(agec^2) + stemjoblqc, data = a, family = poisson)
+# summary(mod.lq)
+
+cov.mod.lq = vcovHC(mod.lq, type = "HC0")
+std.err.mod.lq = sqrt(diag(cov.mod.lq))
+
+rmod1.est = data.frame(Estimate = coef(mod.lq), "robust se" = std.err.mod.lq, "Pr(>|z|)" = 2 * pnorm(abs(coef(mod.lq)/std.err.mod.lq), lower.tail = F),
+ lcl = coef(mod.lq) - (1.96 * std.err.mod.lq),
+ ucl = coef(mod.lq) + (1.96 * std.err.mod.lq))
+# signif(rmod1.est, 3)
+
+# To get the transformed standard errors
+s = deltamethod(
+    list(~exp(x1), ~exp(x2), ~exp(x3), ~exp(x4), ~exp(x5), ~exp(x6), ~exp(x7), ~exp(x8), ~exp(x9)), coef(mod.lq), cov.mod.lq)
+
+# relative risks
+rexp.est = exp(rmod1.est[,-3])
+rexp.est[, "robust.se"] = s
+# signif(rexp.est, 3)
+
+kable(rexp.est, digits = 3)
+mod.lq.coef = sprintf('%1.3f (%1.3f)', rexp.est[,1], rexp.est[,2])
+data.frame(names(coef(mod.lq)), mod.lq.coef)
+cbind(names(coef(mod.lq)), mod.lq.coef)
+
+kable(cbind(names(coef(mod.lq)), mod.lq.coef))
+
+mod.me.coef = c(mod.me.coef, NA) 
+kable(cbind(names(coef(mod.lq)), mod.me.coef, mod.lq.coef))
+
+```
+
+---
+
+|            |mod.me.coef   |mod.lq.coef   |
+|:-----------|:-------------|:-------------|
+|(Intercept) |0.419 (0.002) |0.417 (0.002) |
+|f_raceA     |1.216 (0.010) |1.177 (0.010) |
+|f_raceB     |0.792 (0.012) |0.801 (0.012) |
+|f_raceH     |0.710 (0.011) |0.738 (0.011) |
+|f_sexF      |0.645 (0.005) |0.646 (0.005) |
+|f_fbfb      |1.091 (0.009) |1.086 (0.009) |
+|agec        |0.987 (0.000) |0.987 (0.000) |
+|I(agec^2)   |1.000 (0.000) |1.000 (0.000) |
+|stemjoblqc  |              |1.271 (0.006) |
+|logLik      |-130573       |-130048       |
+|BIC         |261255        |260216        |
+
+
+## Interact sex
+
+
+```{r sex, echo=FALSE, eval=TRUE, results='asis'}
+
+mod.1a = glm(match ~ stemjoblqc * f_sex + f_race + f_fb + agec + I(agec^2), data = a, family = poisson) 
+
+cov.mod.1a = vcovHC(mod.1a, type = "HC0")
+std.err.mod.1a = sqrt(diag(cov.mod.1a))
+
+rmod1.est = data.frame(Estimate = coef(mod.1a), "robust se" = std.err.mod.1a, "Pr(>|z|)" = 2 * pnorm(abs(coef(mod.1a)/std.err.mod.1a), lower.tail = F),
+ lcl = coef(mod.1a) - (1.96 * std.err.mod.1a),
+ ucl = coef(mod.1a) + (1.96 * std.err.mod.1a))
+# signif(rmod1.est, 3)
+
+# To get the transformed standard errors
+s = deltamethod(
+    list(~exp(x1), ~exp(x2), ~exp(x3), ~exp(x4), ~exp(x5), ~exp(x6), ~exp(x7), ~exp(x8), ~exp(x9), ~exp(x10)), coef(mod.1a), cov.mod.1a)
+
+# relative risks
+rexp.est = exp(rmod1.est[,-3])
+rexp.est[, "robust.se"] = s
+# signif(rexp.est, 3)
+
+kable(rexp.est, digits = 3)
+
+mod.isex.coef = sprintf('%1.3f (%1.3f)', rexp.est[,1], rexp.est[,2])
+mod.isex.names = names(coef(mod.1a))
+# kable(cbind(mod.isex.names, mod.isex.coef))
+
+
+```
+
+Being in a high STEM job LQ city has a positive effect on the probability of a match for a woman. About the same in magnitude as for foreign born in the previous model.
+
+## Interact nativity
+
+```{r nativity, echo=FALSE, eval=TRUE, results='asis'}
+mod.1b = glm(match ~ stemjoblqc * f_fb + f_sex + f_race + agec + I(agec^2), data = a, family = poisson) 
+
+cov.mod.1b = vcovHC(mod.1b, type = "HC0")
+std.err.mod.1b = sqrt(diag(cov.mod.1b))
+
+rmod1.est = data.frame(Estimate = coef(mod.1b), "robust se" = std.err.mod.1b, "Pr(>|z|)" = 2 * pnorm(abs(coef(mod.1b)/std.err.mod.1b), lower.tail = F),
+ lcl = coef(mod.1b) - (1.96 * std.err.mod.1b),
+ ucl = coef(mod.1b) + (1.96 * std.err.mod.1b))
+# signif(rmod1.est, 3)
+
+# To get the transformed standard errors
+s = deltamethod(
+    list(~exp(x1), ~exp(x2), ~exp(x3), ~exp(x4), ~exp(x5), ~exp(x6), ~exp(x7), ~exp(x8), ~exp(x9), ~exp(x10)), coef(mod.1b), cov.mod.1b)
+
+# relative risks
+rexp.est = exp(rmod1.est[,-3])
+rexp.est[, "robust.se"] = s
+# signif(rexp.est, 3)
+
+kable(rexp.est, digits = 3)
+
+mod.inat.coef = sprintf('%1.3f (%1.3f)', rexp.est[,1], rexp.est[,2])
+mod.inat.names = names(coef(mod.1b))
+# kable(cbind(mod.inat.names, mod.inat.coef))
+
+```
+
+Note the direction change from the previous version of this file I sent. Calculating the LQ of STEM jobs correctly, now has made the effect modification for the foreign born *negative*. Being in a higher LQ city **lowers** (slightly) the effect modification for a match.
+
+This is hard to believe. And I can hear Mark saying that maybe the relative risk estimation does not work...
+
+Although, an anecdote might inform. Kristi Copeland's husband is from the subcontinent, and his first job was in Cleveland with Booz, Allen, and Hamilton. There were *lots* of foreign born in that office and they all joked that they accepted the job in Cleveland because they didn't know better. 
+
+## Interact race
+
+```{r race, echo=FALSE, eval=TRUE, results='asis'}
+mod.1c = glm(match ~ stemjoblqc * f_race + f_sex + f_fb + agec + I(agec^2), data = a, family = poisson) 
+
+cov.mod.1c = vcovHC(mod.1c, type = "HC0")
+std.err.mod.1c = sqrt(diag(cov.mod.1c))
+
+rmod1.est = data.frame(Estimate = coef(mod.1c), "robust se" = std.err.mod.1c, "Pr(>|z|)" = 2 * pnorm(abs(coef(mod.1c)/std.err.mod.1c), lower.tail = F),
+ lcl = coef(mod.1c) - (1.96 * std.err.mod.1c),
+ ucl = coef(mod.1c) + (1.96 * std.err.mod.1c))
+# signif(rmod1.est, 3)
+
+# To get the transformed standard errors
+s = deltamethod(
+    list(~exp(x1), ~exp(x2), ~exp(x3), ~exp(x4), ~exp(x5), ~exp(x6), ~exp(x7), ~exp(x8), ~exp(x9), ~exp(x10), ~exp(x11), ~exp(x12)), coef(mod.1c), cov.mod.1c)
+
+# relative risks
+rexp.est = exp(rmod1.est[,-3])
+rexp.est[, "robust.se"] = s
+# signif(rexp.est, 3)
+
+kable(rexp.est, digits = 3)
+
+mod.irace.coef = sprintf('%1.3f (%1.3f)', rexp.est[,1], rexp.est[,2])
+mod.irace.names = names(coef(mod.1c))
+# kable(cbind(mod.irace.names, mod.irace.coef))
+
+```
+
+Perhaps a little surprisingly, Asian men, are a little *less* likely to be matched in high STEM job LQ cities than white men. For Black men it is marginally positive, but not well estimated enough to be definitive, and for Hispanic men, strongly positive --of roughly the same magnitude as for women above.
+
+# Model-based assessment of interactions
+
+I think the more standard way is to put all interactions into a single model, then test the differences between models, pulling one out at a time.
+
+But, here I will just present a table of each model estimated separately. There are many roads to Rome...
+
+```{r mod.interactions, echo=FALSE, eval=TRUE, results='asis'}
+mod.all = glm(match ~ stemjoblqc + f_race + f_sex + f_fb + agec + I(agec^2) +
+              stemjoblqc:f_race +
+              stemjoblqc:f_sex + 
+              stemjoblqc:f_fb, 
+              data = a, family = poisson) 
+
+cov.mod.all = vcovHC(mod.all, type = "HC0")
+std.err.mod.all = sqrt(diag(cov.mod.all))
+
+rmod1.est = data.frame(Estimate = coef(mod.all), "robust se" = std.err.mod.all, "Pr(>|z|)" = 2 * pnorm(abs(coef(mod.all)/std.err.mod.all), lower.tail = F),
+ lcl = coef(mod.all) - (1.96 * std.err.mod.all),
+ ucl = coef(mod.all) + (1.96 * std.err.mod.all))
+# signif(rmod1.est, 3)
+
+# To get the transformed standard errors
+s = deltamethod(
+    list(~exp(x1), ~exp(x2), ~exp(x3), ~exp(x4), ~exp(x5), ~exp(x6), ~exp(x7), ~exp(x8), ~exp(x9), ~exp(x10), ~exp(x11), ~exp(x12), ~exp(x13), ~exp(x14)), coef(mod.all), cov.mod.all)
+
+# relative risks
+rexp.est = exp(rmod1.est[,-3])
+rexp.est[, "robust.se"] = s
+# signif(rexp.est, 3)
+
+kable(rexp.est, digits = 3)
+
+mod.iall.coef = sprintf('%1.3f (%1.3f)', rexp.est[,1], rexp.est[,2])
+mod.iall.names = names(coef(mod.all))
+# kable(cbind(mod.iall.names, mod.iall.coef))
+
+```
+
+Now figure out a way to display all of that together
+
+```{r formatoutput, echo=FALSE, eval=TRUE, results='hide'}
+
+mod.me.coef = c(mod.me.coef, rep(NA, 5)) 
+mod.lq.coef = c(mod.lq.coef, rep(NA, 5))
+
+kable(cbind(var = mod.iall.names, mod.me.coef, mod.lq.coef, mod.iall.coef))
+kable(cbind(var = mod.iall.names, mod.iall.coef, mod.iall.coef, mod.iall.coef, mod.iall.coef))
+
+kable(cbind(mod.isex.names, mod.isex.coef))
+kable(cbind(mod.inat.names, mod.inat.coef))
+kable(cbind(mod.irace.names, mod.irace.coef))
+
+lapply(list(mod.1a, mod.1b, mod.1c, mod.all), logLik)
+lapply(list(mod.1a, mod.1b, mod.1c, mod.all), BIC.lm)
+```
+
+This was hand-coded
+
+|var                |Model 1 (sex) |Model 2 (nat) |Model 3 (race)|Model 4 (all) |
+|:------------------|-------------:|-------------:|-------------:|-------------:|
+|(Intercept)        |0.418 (0.002) |0.418 (0.002) |0.417 (0.002) |0.418 (0.002) |
+|stemjoblqc         |1.249 (0.011) |1.289 (0.011) |1.301 (0.010) |1.274 (0.011) |
+|f_raceA            |1.177 (0.010) |1.178 (0.010) |1.187 (0.010) |1.189 (0.010) |
+|f_raceB            |0.801 (0.012) |0.800 (0.012) |0.801 (0.012) |0.803 (0.012) |
+|f_raceH            |0.738 (0.011) |0.737 (0.011) |0.747 (0.012) |0.748 (0.012) |
+|f_sexF             |0.641 (0.005) |0.646 (0.005) |0.646 (0.005) |0.641 (0.005) |
+|f_fbfb             |1.085 (0.009) |1.088 (0.009) |1.086 (0.009) |1.084 (0.009) |
+|agec               |0.987 (0.000) |0.987 (0.000) |0.987 (0.000) |0.987 (0.000) |
+|I(agec^2)          |1.000 (0.000) |1.000 (0.000) |1.000 (0.000) |1.000 (0.000) |
+|stemjoblqc:f_raceA |              |              |0.940 (0.009) |0.923 (0.012) |
+|stemjoblqc:f_raceB |              |              |1.056 (0.036) |1.043 (0.036) |
+|stemjoblqc:f_raceH |              |              |1.098 (0.029) |1.085 (0.029) |
+|stemjoblqc:f_sexF  |1.086 (0.014) |              |              |1.089 (0.014) |
+|stemjoblqc:f_fbfb  |              |0.974 (0.010) |              |1.021 (0.013) | 
+|log Likelihood     |-130036       |-130046       |-130031       |-130018       |
+|BIC                |260206        |260225        |260219        |260218        |
+
+
+
+## Model Comparison 
+
+Now remove factors and compare the models. (not shown)
+
+```{r mod.interactions.test, echo=FALSE, eval=FALSE, results='markup'}
+
+mod.sex = update(mod.all, . ~ . -stemjoblqc:f_sex)
+anova(mod.sex, mod.all, test = "Chisq")
+
+mod.fb = update(mod.all, . ~ . -stemjoblqc:f_fb)
+anova(mod.fb, mod.all, test = "Chisq")
+
+mod.race = update(mod.all, . ~ . -stemjoblqc:f_race)
+anova(mod.race, mod.all, test = "Chisq")
+```
+
+
+# Predicted probabilities
+
+(not shown)
+
+```{r pp.geogmodel, echo=FALSE, eval=FALSE, results='markup'}
+# Below is calculated predicted probabilities
+
+pred.vars = data.frame(with(a, expand.grid(unique(geogname), levels(f_race), levels(f_sex), unique(age))))
+# names(pred.vars) = c("f_race", "f_sex", "age")
+names(pred.vars) = c("geogname", "f_race", "f_sex", "age")
+dim(pred.vars) ; head(pred.vars)
+
+predictions = data.frame(predict(mod.geog, newdata = pred.vars, type = "response", se.fit = T))
+
+pred.frame = data.frame(pred.vars, signif(predictions, 3))
+head(pred.frame) 
+
+source("~/Documents/diss/tools/plotfuns.R")
+ta = with(pred.frame, pred.frame[f_race == "W" & f_sex == "F" & age == 25,])
+summary(ta$fit)
+ta = ta[order(ta$fit), ]
+
+par(mar = c(5, 6, 4, 2) + 0.1)
+dotchart(ta$fit, pch = 20, bty = "n") 
+axis(side = 2, at = 1:55, labels = ta$geogname, las = 1, cex.axis = 0.55)
+    
+one = with(pred.frame, pred.frame[f_race == "W" & f_sex == "M" & age == 44,])
+two = with(pred.frame, pred.frame[f_race == "B" & f_sex == "M" & age == 44,])
+summary(one[,"fit"] - two[,"fit"])
+
+# dotchart.ann(vals = ta$fit,
+#              annot = NULL,
+#              x.lab = "P[match]",
+#              y.lab = ta$geogname,
+#              dotval = 0.01
+#              )
+
+### Also test differences in model fit by removing factors
+anova(mod.geog)
+mod.c = update(mod.geog, . ~ . - factor(geogname))
+anova(mod.c)
+anova(mod.geog, mod.c, test = "Chisq")
+summary(mod.geog) ; summary(mod.c)
+rbind(cbind(mod.geog$null.deviance, mod.c$null.deviance),
+cbind(mod.geog$deviance, mod.c$deviance))
+```

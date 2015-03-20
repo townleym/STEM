@@ -1,0 +1,1130 @@
+---
+title: "Model Output"
+date: "November 12, 2014"
+output: 
+    html_document:
+        number_sections: true
+        css: basic.css
+        self_contained: false
+        theme: null
+        highlight: null
+        keep_md: true
+---
+
+```{r initialize, eval=T, echo=F, collapse=T, results='hide'}
+# setwd('~/win/project/ellis-nsf10/STEM/analysis')
+setwd('~/Documents/Geog/MigProject/STEM/analysis')
+require(sandwich)
+require(msm)
+require(knitr)
+require(magrittr)
+
+require(RSQLite)
+
+source("finalfinalmakedata.R")
+
+# Some final data mods
+# And make a reduced dataset with just stem degree holders
+a = acs[acs$stemdeg == 1,]
+a = transform(a, 
+    agebin = cut(age, 
+    breaks = c(18, 24, 29, 34, 39, 44, 49, 54, 59, 64, 74, 84, 95)))
+
+voi = c("perwt", "age", "fb", "geog_curr", "geogname", "stemjob", "stem1", "stem_domain", "ed", "stemdeg", "match", "f_race", "f_sex", "f_fb", "agebin", "stemjoblq", "stemjobcount")
+
+# write.csv(acs, file = "../data/acs.csv", row.names = F)
+# write.csv(acs.stemdeg, file = "../data/acs.stemdeg.csv", row.names = F)
+
+a = with(a, a[age >= 25 & age <= 65, voi])
+a = transform(a, agec = round(age - mean(age), 1))
+a = transform(a, stemjoblqc = stemjoblq - 1)
+a = transform(a, stemjobcountc = round(stemjobcount - mean(stemjobcount)))
+
+# and my cute plotting functions
+source("plotfuns.R")
+
+# And this stupidity...
+citynames = c("Atlanta, GA", "Austin, TX", "Baltimore, MD", "Boston, MA", "Buffalo, NY", "Charlotte, NC", "Chicago, IL", "Cincinnati, OH", "Cleveland, OH", "Columbus, OH", "Dallas-Fort Worth, TX", "Denver, CO", "Detroit, MI", "Fort Lauderdale, FL", "Fresno, CA", "Grand Rapids, MI", "Greensboro, NC", "Houston, TX", "Indianapolis, IN", "Jacksonville, FL", "Kansas City, MO", "Las Vegas, NV", "Los Angeles, CA", "Memphis, TN", "Miami, FL", "Milwaukee, WI", "Minneapolis-St. Paul, MN", "Monmouth-Ocean, NJ", "Nashville, TN", "New Orleans, LA", "New York, NY", "Norfolk, VA", "Oklahoma City, OK", "Orlando, FL", "Philadelphia, PA", "Phoenix, AZ", "Pittsburgh, PA", "Portland, OR", "Providence, RI", "Raleigh-Durham, NC", "Richmond, VA", "Riverside, CA", "Rochester, NY", "Sacramento, CA", "Salt Lake City, UT", "San Antonio, TX", "San Diego, CA", "San Francisco, CA", "San Jose, CA", "Seattle, WA", "St. Louis, MO", "Tampa-St. Petersburg, FL", "Tulsa, OK", "Washington, DC", "West Palm Beach, FL")
+
+# Adrian Raftery's BIC.lm function
+BIC.lm.a = function (lm.object) {
+    # Computes BIC for a fixed effects regression model estimated using lm.
+    # The definition of BIC is the same as that used in lmer.
+    sigma2 = mean (lm.object$residuals^2)
+    df = summary(lm.object)$df
+    n = df[1] + df[2]
+    npar = df[1] + 1
+    
+    loglik = (-n/2) * (log(2*pi) + log(sigma2) + 1)
+    BIC = -2*loglik + npar*log(n)
+    return(BIC)
+}
+
+# A function for calculating the log-likelihood used in AR's function
+ll.a = function(mod) {
+    sigma2 = mean (mod$residuals^2)
+    df = summary(mod)$df
+    n = df[1] + df[2]
+    loglik = (-n/2) * (log(2*pi) + log(sigma2) + 1)
+    df = df[3]
+    npar = df[1] + 1
+
+    return(list(log.likelihood = loglik, parameters = npar, df = df, n = n))
+}
+
+# Uses the built-in method for extracting logLikelihood
+# results correspond more closely with LR tests, etc.
+BIC.lm = function(mod) {
+    loglik = as.numeric(logLik(mod))
+    df = summary(mod)$df
+    npar = df[1] + 1
+    n = df[1] + df[2]
+    
+    BIC = -2 * loglik + npar * log(n)
+    return(BIC)
+}
+
+```
+
+The big difference is that we lose almost *half* of the observations once we eliminate those with advanced degrees. By classifying second degree fields, we picked up about 1,000 additional STEM degree holders to bring the number to about 92,000. But by eliminating those with an advanced degree, we lost about 85,000. 
+
+That is astounding.
+
+# Model
+
+Main effects, then interact sex, nativity, race. The intercept is a white male of average age (about 42.8 yrs) in a city with a STEM job LQ of 1.
+
+```{r modprep, echo=FALSE, eval=TRUE, results='hide'}
+require(msm)
+
+# all of the following should have been taken care of in 
+# makedata.R
+# a = transform(a, stemjoblqc = stemjoblq - mean(stemjoblq))
+# a[,"f_race"] = relevel(a[,"f_race"], ref = "W")
+a[,"f_sex"] = relevel(a[,"f_sex"], ref = "M")
+a[,"f_fb"] = relevel(a[,"f_fb"], ref = "nb")
+
+kable(data.frame(meanLQ = round(mean(a$stemjoblq), 2), mean.age = round(mean(a$age), 1)))
+```
+
+## LQ or log(count)?
+
+```{r lqorcount.mod, echo=FALSE, eval=TRUE, results='hide'}
+
+# mod.1 = glm(match ~ stemjoblq + f_race + f_sex + f_fb + agec + I(agec^2), data = a, family = quasibinomial(link = "log"), start = rep(0.5, 9))
+# if the above does not work...
+modbase = glm(match ~ f_race + f_sex + f_fb + agec + I(agec^2), data = a, family = poisson)
+# mod.logit = glm(match ~ stemjoblqc + log(stemjobcount) + f_race + f_sex + f_fb + agec + I(agec^2), data = a, family = binomial(link = "logit"))
+
+summary(modbase)
+# Correlation between fitted and actual values
+# Which will always be poor since the outcome is 
+# The relative risk of match == 1
+cor(exp(modbase$fitted), a$match)^2
+
+# remove a factor at a time and test. How the fuck to report this...
+modcount = update(modbase, . ~ . + stemjobcountc)
+modlq = update(modbase, . ~ . + stemjoblqc)
+modboth = update(modbase, . ~ . + stemjobcountc + stemjoblqc)
+# modboth = glm(match ~ f_race + f_sex + f_fb + agec + I(agec^2) + stemjoblqc + log(stemjobcount), data = a, family = poisson)
+
+modbasesum = summary(modbase)
+modcountsum = summary(modcount)
+modlqsum = summary(modlq)
+modbothsum = summary(modboth)
+
+1-pchisq(modbasesum$deviance, modbasesum$df.residual) # if this is sigificant we have a bad fit
+with(modbase, pchisq(deviance, df.residual, lower.tail = F)) # if this is sig, we have a poor fit
+with(modcount, pchisq(deviance, df.residual, lower.tail = F)) # if this is sig, we have a poor fit
+with(modlq, pchisq(deviance, df.residual, lower.tail = F)) # if this is sig, we have a poor fit
+with(modboth, pchisq(deviance, df.residual, lower.tail = F)) # if this is sig, we have a poor fit
+
+
+summary(modcount)
+summary(modlq)
+
+anova(modbase, modcount, test = "Chisq")
+anova(modbase, modlq, test = "Chisq")
+anova(modbase, modboth, test = "Chisq")
+
+anova(modboth, modcount, modbase, test = "Chisq")
+anova(modboth, modlq, modbase, test = "Chisq")
+
+ll.1 = as.numeric(logLik(modbase))
+ll.2 = as.numeric(logLik(modcount))
+ll.3 = as.numeric(logLik(modlq))
+ll.4 = as.numeric(logLik(modboth))
+
+# Same as ANOVA
+pchisq(2 * (ll.2 - ll.1), df = (summary(modcount)$df[1] - summary(modbase)$df[1]), lower.tail = FALSE)
+pchisq(2 * (ll.3 - ll.1), df = (summary(modlq)$df[1] - summary(modbase)$df[1]), lower.tail = FALSE)
+
+# We have two ways of computing the BIC
+# The function adds 1 to the number of parameters
+BIC.lm(modbase) ; -2*(ll.1) + log(nrow(a)) * summary(modbase)$df[1]
+BIC.lm(modcount) ; -2*(ll.1) + log(nrow(a)) * summary(modcount)$df[1]
+BIC.lm(modlq) ; -2*(ll.1) + log(nrow(a)) * summary(modlq)$df[1]
+
+BIC.lm(modcount) ; BIC.lm(modbase) ; BIC.lm(modcount) - BIC.lm(modbase)
+BIC.lm(modlq) ; BIC.lm(modbase) ; BIC.lm(modlq) - BIC.lm(modbase)
+
+
+# LR test
+lr.test <- 2*(ll.2 - ll.1)
+lr.test.p <- pchisq(lr.test,df=(summary(modcount)$df[1] - summary(modbase)$df[1]),lower.tail=FALSE)
+
+# BIC
+bic.test.2 <- -2*(ll.2 - ll.1) + log(nrow(a)) * (summary(modbase)$df[1] + 1)
+bic.test.3 <- -2*(ll.3 - ll.1) + log(nrow(a)) * (summary(modbase)$df[1] + 1)
+bic.test.2
+bic.test.3
+```
+
+We have four models, one with neither stem job count nor the LQ, then three with all possible combinations.
+
+```{r lqorcount.pres, echo=FALSE, eval=TRUE, results='asis'}
+names = names(coef(modboth))
+
+results = data.frame(matrix(data = NA, nrow = length(names), ncol = 4))
+rownames(results) = names
+colnames(results) = c("base", "count", "lq", "both")
+
+c.modbase = coef(modbase) %>% exp
+n.modbase = names(c.modbase)
+
+c.modcount = coef(modcount) %>% exp 
+n.modcount = names(c.modcount)
+
+c.modlq = coef(modlq) %>% exp 
+n.modlq = names(c.modlq)
+
+c.modboth = coef(modboth) %>% exp 
+n.modboth = names(c.modboth)
+
+indbase = match(n.modbase, n.modboth) 
+indcount = match(n.modcount, n.modboth)
+indlq = match(n.modlq, n.modboth)
+
+results[indbase, "base"] = c.modbase
+results[indcount, "count"] = c.modcount
+results[indlq, "lq"] = c.modlq
+results[,"both"] = c.modboth
+
+# results = round(results, 3)
+
+bic1 = round(BIC.lm(modbase), 0)
+bic2 = round(BIC.lm(modcount), 0)
+bic3 = round(BIC.lm(modlq), 0)
+bic4 = round(BIC.lm(modboth), 0)
+
+ll.1 = round(as.numeric(logLik(modbase)), 0)
+ll.2 = round(as.numeric(logLik(modcount)), 0)
+ll.3 = round(as.numeric(logLik(modlq)), 0)
+ll.4 = round(as.numeric(logLik(modboth)), 0)
+
+ll.count = -2 * (logLik(modbase) - logLik(modcount))[1]
+df.count = summary(modcount)$df[1] - summary(modbase)$df[1]
+pchisq(ll.count, df = df.count, lower.tail = F)
+lrtest.count = pchisq(ll.count, df = df.count, lower.tail = F)
+anova(modbase, modcount, test = "Chisq")
+
+lrtest.count = anova(modbase, modcount, test = "Chisq")[["Pr(>Chi)"]][2]
+lrtest.lq = anova(modbase, modlq, test = "Chisq")[["Pr(>Chi)"]][2]
+lrtest.both = anova(modbase, modboth, test = "Chisq")[["Pr(>Chi)"]][2]
+
+loglikrow = c(ll.1, ll.2, ll.3, ll.4)
+lrtestrow = c(NA, lrtest.count, lrtest.lq, lrtest.both)
+bicrow = c(bic1, bic2, bic3, bic4)
+
+resultsout = data.frame(rbind(results, loglikrow, lrtestrow, bicrow))
+rownames(resultsout)[11:13] = c("LogLikelihood", "Pr[>Chi]", "BIC")
+round(resultsout, 3)
+
+kable(resultsout, digits = 3)
+```
+
+This result is different from what we got before in which the centered LQ did all the work. The evidence is mixed. By itself, the stem job count does not improve model fit. But in the model with LQ, we have evidence that it does. Furthermore they pull in opposite directions.
+
+This is a pretty big change from when we ran the models with STEM degree holders with either a BA or an advanced degree. Why?
+
+
+```{r advdegattainment, echo=FALSE, eval=TRUE, collapse=TRUE, results='asis'}
+sqlite = dbDriver("SQLite")
+dbpath = "~/Documents/Geog/MigProject/data/sql/acs2011.sqlite"
+
+conn = dbConnect(sqlite, dbpath)
+
+query = "SELECT    
+		acs.perwt,
+		acs.age,
+		acs.sex,
+		acs.citizen,
+		acs.fb,
+		acs.degfield,
+		acs.degfieldd,
+		acs.empstat,
+		acs.ed,
+		acs.ethrace,
+		acs.geog_prev,
+		acs.geog_curr,
+        acs.stemdeg,
+		codematch.ipums_code,
+		codematch.stem as stemjob,
+		codematch.stem_domain,
+		codematch.stem1,
+		codematch.stem4,
+		degreclass.degreclass as degreclass,
+		reclasscodes.reclasslabel as reclasslabel,
+        citymapper.code,
+        citymapper.geogname
+	from acs 
+	LEFT JOIN codematch ON acs.occsoc = codematch.ipums_code
+	LEFT JOIN degreclass ON acs.degfield = degreclass.degfield
+	LEFT JOIN reclasscodes ON degreclass.degreclass = reclasscodes.reclasscode
+	LEFT JOIN citymapper on acs.geog_curr = citymapper.code
+	where 
+		acs.civ_hh = 1
+        AND	(acs.gq != 3 and acs.gq !=4) 
+        AND citymapper.pop2010 > 1000000
+		AND acs.geog_curr > 0
+        AND acs.ethrace < 4
+        AND (acs.empstat = 1 or acs.empstat = 2);"
+
+########################################################
+start.time  =  proc.time()
+
+q.obj = dbSendQuery(conn, query)
+
+# Retrieve Query results into a data frame
+acs.all = fetch(q.obj, n=-1)
+
+print(paste("time in minutes: ", round(proc.time()[3] - start.time[3], 3) / 60, sep=""))
+########################################################
+
+# Clean up the query object (no longer needed)
+dbClearResult(q.obj)
+
+# Indicator for STEM degree/job match
+acs.all = transform(acs.all, match = as.numeric(stem1 & stemdeg))
+
+acs.all %>% with(table(ed, stemdeg)) %>% kable(digits = 0, row.names = T, format = "pandoc", caption = "Attainment X STEM Degree: all LF")
+
+attainmentXSTEM = acs.all[acs.all$age >= 25 & acs.all$age <= 65,] %>% with(table(ed, stemdeg)) 
+attainmentXSTEM %>% kable(digits = 0, row.names = T, format = "pandoc", caption = "Attainment X STEM Degree: all LF aged 25 - 65")
+```
+
+The rows correspond to highest educational attainment. 4 is a BA, and 5 is an advanced degree. When we exclude advanced degree holders, we will lose almost half the STEM degree holders.
+
+That is just because advanced degree attainment among STEM degree holders is astounding:
+
+```{r advdegattainmentprop, echo=FALSE, eval=TRUE, collapse=TRUE, results='asis'}
+advprop = attainmentXSTEM[5,] / apply(attainmentXSTEM[4:5,], 2, sum) 
+advprop %>% kable(digits = 2, format = "pandoc", caption = "Advanced degree attainment, non-STEM and STEM degree holders (observations).")
+
+attainmentXSTEM = acs.all[acs.all$age >= 25 & acs.all$age <= 65,] %>% with(tapply(perwt, list(ed, stemdeg), sum)) 
+advprop = attainmentXSTEM[5,] / apply(attainmentXSTEM[4:5,], 2, sum) 
+advprop %>% kable(digits = 2, format = "pandoc", caption = "Advanced degree attainment, non-STEM and STEM degree holders (counts).")
+```
+
+And below is the effect on matching
+
+```{r matcheffect, echo=FALSE, eval=TRUE, collapse=TRUE, results='asis'}
+
+acs.all[acs.all$age >= 25 & acs.all$age <= 65,] %>% with(table(stemdeg, match)) %>% kable(digits = 0, row.names = T, format = "pandoc", caption = "STEM Degree X Match: all degree holders")
+
+acs.all[acs.all$age >= 25 & acs.all$age <= 65 & acs.all$ed == 4,] %>% with(table(stemdeg, match)) %>% kable(digits = 0, row.names = T, format = "pandoc", caption = "STEM Degree X Match: excluding advanced degree holders")
+
+```
+
+## Main effects
+
+As a baseline, we will first estimate just the main effects for age, race, sex, and nativity.
+
+```{r maineffects.mod, echo=FALSE, eval=TRUE, results='asis'}
+# mod.1 = glm(match ~ stemjoblq + f_race + f_sex + f_fb + agec + I(agec^2) + log(stemjobcount), data = a, family = quasibinomial(link = "log"), start = rep(1, 10))
+# if the above does not work...
+mod.1 = glm(match ~ f_race + f_sex + f_fb + agec + I(agec^2), data = a, family = poisson)
+# summary(mod.1)
+
+cov.mod.1 = vcovHC(mod.1, type = "HC0")
+std.err.mod.1 = sqrt(diag(cov.mod.1))
+
+rmod1.est = data.frame(Estimate = coef(mod.1), "robust se" = std.err.mod.1, "Pr(>|z|)" = 2 * pnorm(abs(coef(mod.1)/std.err.mod.1), lower.tail = F),
+ lcl = coef(mod.1) - (1.96 * std.err.mod.1),
+ ucl = coef(mod.1) + (1.96 * std.err.mod.1))
+# signif(rmod1.est, 3)
+
+# To get the transformed standard errors
+s = deltamethod(
+    list(~exp(x1), ~exp(x2), ~exp(x3), ~exp(x4), ~exp(x5), ~exp(x6), ~exp(x7), ~exp(x8)), coef(mod.1), cov.mod.1)
+
+# relative risks
+rexp.est = exp(rmod1.est[,-3])
+rexp.est[, "robust.se"] = s
+# signif(rexp.est, 3)
+
+kable(rexp.est, digits = 3)
+
+# Below is code to just display the coefficients and standard errors
+mod.me.coef = sprintf('%1.3f (%1.3f)', rexp.est[,1], rexp.est[,2])
+# data.frame(names(coef(mod.1)), mod.me.coef)
+thing = cbind(names(coef(mod.1)), mod.me.coef)
+
+ll = round(as.numeric(logLik(mod.1)), 0)
+bic = round(BIC.lm(mod.1), 0)
+
+# kable(cbind(names(coef(mod.1)), mod.me.coef))
+```
+
+
+## Add LQ and STEM Job count
+
+And from here on I will include both. 
+
+```{r lq.mod, echo=FALSE, eval=TRUE, results='asis'}
+
+mod.lq = glm(match ~ f_race + f_sex + f_fb + agec + I(agec^2) + stemjoblqc + stemjobcountc, data = a, family = poisson)
+# summary(mod.lq)
+
+cov.mod.lq = vcovHC(mod.lq, type = "HC0")
+std.err.mod.lq = sqrt(diag(cov.mod.lq))
+
+rmod1.est = data.frame(Estimate = coef(mod.lq), "robust se" = std.err.mod.lq, "Pr(>|z|)" = 2 * pnorm(abs(coef(mod.lq)/std.err.mod.lq), lower.tail = F),
+ lcl = coef(mod.lq) - (1.96 * std.err.mod.lq),
+ ucl = coef(mod.lq) + (1.96 * std.err.mod.lq))
+# signif(rmod1.est, 3)
+
+# To get the transformed standard errors
+s = deltamethod(
+    list(~exp(x1), ~exp(x2), ~exp(x3), ~exp(x4), ~exp(x5), ~exp(x6), ~exp(x7), ~exp(x8), ~exp(x9), ~exp(x10)), coef(mod.lq), cov.mod.lq)
+
+# relative risks
+rexp.est = exp(rmod1.est[,-3])
+rexp.est[, "robust.se"] = s
+# signif(rexp.est, 3)
+
+kable(rexp.est, digits = 3)
+
+# Below is an attempt to munge the coefficients/standard errors 
+# for all the models into a single table. It failed.
+mod.lq.coef = sprintf('%1.3f (%1.3f)', rexp.est[,1], rexp.est[,2])
+# data.frame(names(coef(mod.lq)), mod.lq.coef)
+# cbind(names(coef(mod.lq)), mod.lq.coef)
+
+# kable(cbind(names(coef(mod.lq)), mod.lq.coef))
+
+# mod.me.coef = c(mod.me.coef, NA) 
+# kable(cbind(names(coef(mod.lq)), mod.me.coef, mod.lq.coef))
+
+```
+
+
+ 
+## Now interact race and nativity
+
+Given that the coefficient for foreign born is less than 1, I suspect that national origin might change that. Our baseline category is a white male, so it is conceivable that a white, foreign born male would have a lower probabilty of a match than a native born one. But I suspect the same is *not* true for, say, Asian males. 
+
+Let's look.
+
+```{r lq.mod.race, echo=FALSE, eval=TRUE, results='asis'}
+
+mod.lq.race = glm(match ~ f_sex + f_race * f_fb + agec + I(agec^2) + stemjoblqc + stemjobcountc, data = a, family = poisson)
+# summary(mod.lq.race)
+
+cov.mod.lq.race = vcovHC(mod.lq.race, type = "HC0")
+std.err.mod.lq.race = sqrt(diag(cov.mod.lq.race))
+
+rmod1.est = data.frame(Estimate = coef(mod.lq.race), "robust se" = std.err.mod.lq.race, "Pr(>|z|)" = 2 * pnorm(abs(coef(mod.lq.race)/std.err.mod.lq.race), lower.tail = F),
+ lcl = coef(mod.lq.race) - (1.96 * std.err.mod.lq.race),
+ ucl = coef(mod.lq.race) + (1.96 * std.err.mod.lq.race))
+# signif(rmod1.est, 3)
+
+# To get the transformed standard errors
+s = deltamethod(
+    list(~exp(x1), ~exp(x2), ~exp(x3), ~exp(x4), ~exp(x5), ~exp(x6), ~exp(x7), ~exp(x8), ~exp(x9), ~exp(x10), ~exp(x11), ~exp(x12), ~exp(x13)), coef(mod.lq.race), cov.mod.lq.race)
+
+# relative risks
+rexp.est = exp(rmod1.est[,-3])
+rexp.est[, "robust.se"] = s
+# signif(rexp.est, 3)
+
+kable(rexp.est, digits = 3)
+
+mod.lqrace.coef = sprintf('%1.3f (%1.3f)', rexp.est[,1], rexp.est[,2])
+mod.lqrace.names = names(coef(mod.lq.race))
+kable(data.frame(mod.lqrace.names, mod.lqrace.coef), format = "pandoc")
+```
+
+Look at that. The effect for Asian alone is no longer statistically significant, but the interaction with Asian and Foreign Born does all the work that Asian did *without* the interaction. In other words, the matching effect for Asian men is *only* for foreign-born Asian men. Also, as expected, the effect is negative for foreign born Hispanic men, and unsurprisingly not statistically significant for foreign born blacks (given the relatively small number).
+
+# Interaction between demography and geography
+
+In the following sections we will interact each demographic variable (race, sex, nativity) with the LQ variable to see whether place attenuates or exaggerates the demographic effects.
+
+In each of the following sections we will interact race, sex, and nativity with the geographic variables. We expect better matching probabilities in high LQ locations.
+
+In this section I have maintained the interaction between race and nativity. That means we have three way interactions between race/nativity/LQ.
+
+Since it does more work, I only interact with the stemjob LQ variable. To be thorough, we should probably do both... but then the number of coefficients gets pretty crazy.
+
+## Interact sex
+
+What is the effect of geography for women?
+
+```{r sex, echo=FALSE, eval=TRUE, results='asis'}
+mod.1a = glm(match ~ stemjoblqc * f_sex + f_race * f_fb + agec + I(agec^2) + stemjobcountc, data = a, family = poisson) 
+# basic goodness of fit for model
+with(mod.1a, cbind(deviance, df.residual, P = pchisq(deviance, df.residual, lower.tail = F)))
+
+cov.mod.1a = vcovHC(mod.1a, type = "HC0")
+std.err.mod.1a = sqrt(diag(cov.mod.1a))
+
+rmod1.est = data.frame(Estimate = coef(mod.1a), "robust se" = std.err.mod.1a, "Pr(>|z|)" = 2 * pnorm(abs(coef(mod.1a)/std.err.mod.1a), lower.tail = F),
+ lcl = coef(mod.1a) - (1.96 * std.err.mod.1a),
+ ucl = coef(mod.1a) + (1.96 * std.err.mod.1a))
+# signif(rmod1.est, 3)
+
+# To get the transformed standard errors
+s = deltamethod(
+    list(~exp(x1), ~exp(x2), ~exp(x3), ~exp(x4), ~exp(x5), ~exp(x6), ~exp(x7), ~exp(x8), ~exp(x9), ~exp(x10), ~exp(x11), ~exp(x12), ~exp(x13), ~exp(x14)), coef(mod.1a), cov.mod.1a)
+
+# relative risks
+rexp.est = exp(rmod1.est[,-3])
+rexp.est[, "robust.se"] = s
+# signif(rexp.est, 3)
+
+kable(rexp.est, digits = 3)
+
+mod.isex.coef = sprintf('%1.3f (%1.3f)', rexp.est[,1], rexp.est[,2])
+mod.isex.names = names(coef(mod.1a))
+# mod.isex.coef %>% data.frame %>% kable(format = "pandoc")
+kable(cbind(mod.isex.names, mod.isex.coef), format = "pandoc")
+
+kable(cbind(mod.isex.names, mod.isex.coef), format = "latex")
+
+```
+
+Being in a high STEM job LQ city has a small but positive effect on the probability of a match for a woman, increasing anywhere between 2% and 10%.
+
+This effect might be a result of a lower relative number of women in STEM job concentrations.
+
+```{r sextab, echo=FALSE, eval=TRUE, results='hide', cache=TRUE}
+sextab = a %>% with(tapply(perwt, list(geog_curr, f_sex), sum))
+fprop = sextab[,"F"] / apply(sextab, 1, sum)
+
+lqs = a %>% with(tapply(stemjoblq, list(geog_curr), mean))
+data.frame(citynames, lqs, fprop) %>% kable(digits = 2, format = "pandoc", caption = "Proportion of women")
+
+plot(fprop ~ lqs, main = "Proportion of STEM degree holders who are women, by LQ", bty = "n")
+abline(lm(fprop ~ lqs))
+summary(lm(fprop ~ lqs))
+```
+
+Except that there is not much variation in the proportion of STEM degree holders who are women. What about proportion matched?
+
+```{r sextab2, echo=FALSE, eval=TRUE, results='asis'}
+sextab = a[a$match == 1, ] %>% with(tapply(perwt, list(geog_curr, f_sex), sum))
+fpropmatch = sextab[,"F"] / apply(sextab, 1, sum)
+
+lqs = a %>% with(tapply(stemjoblq, list(geog_curr), mean))
+data.frame(citynames, lqs, fprop, fpropmatch, fprop - fpropmatch) %>% kable(digits = 2, format = "pandoc", caption = "Proportion of women")
+
+plot(fpropmatch ~ lqs, main = "Proportion of the matched who are women, by LQ", bty = "n")
+abline(lm(fpropmatch ~ lqs - 1))
+summary(lm(fpropmatch ~ lqs - 1))
+
+cor(fpropmatch, lqs)
+```
+
+So, there is a mild association (higher LQ corresponds to a higher proportion of women who are matched), but the effect is weak.
+
+## Interact nativity
+
+```{r nativity, echo=FALSE, eval=TRUE, results='asis'}
+mod.1b = glm(match ~ stemjobcountc + stemjoblqc + f_sex + f_race + f_race:f_fb + f_fb + agec + I(agec^2)  + stemjoblqc:f_fb, data = a, family = poisson) 
+with(mod.1b, cbind(deviance, df.residual, P = pchisq(deviance, df.residual, lower.tail = F)))
+
+cov.mod.1b = vcovHC(mod.1b, type = "HC0")
+std.err.mod.1b = sqrt(diag(cov.mod.1b))
+
+rmod1.est = data.frame(Estimate = coef(mod.1b), "robust se" = std.err.mod.1b, "Pr(>|z|)" = 2 * pnorm(abs(coef(mod.1b)/std.err.mod.1b), lower.tail = F),
+ lcl = coef(mod.1b) - (1.96 * std.err.mod.1b),
+ ucl = coef(mod.1b) + (1.96 * std.err.mod.1b))
+# signif(rmod1.est, 3)
+
+# To get the transformed standard errors
+s = deltamethod(
+    list(~exp(x1), ~exp(x2), ~exp(x3), ~exp(x4), ~exp(x5), ~exp(x6), ~exp(x7), ~exp(x8), ~exp(x9), ~exp(x10), ~exp(x11), ~exp(x12), ~exp(x13), ~exp(x14)), coef(mod.1b), cov.mod.1b)
+
+# relative risks
+rexp.est = exp(rmod1.est[,-3])
+rexp.est[, "robust.se"] = s
+# signif(rexp.est, 3)
+
+kable(rexp.est, digits = 3)
+
+mod.inat.coef = sprintf('%1.3f (%1.3f)', rexp.est[,1], rexp.est[,2])
+mod.inat.names = names(coef(mod.1b))
+kable(cbind(mod.inat.names, mod.inat.coef))
+
+```
+
+Note the direction change from the previous version of this file I sent. Calculating the LQ of STEM jobs correctly, now has made the effect modification for the foreign born *negative*. Being in a higher LQ city **lowers** (slightly) the effect modification for a match.
+
+This is hard to believe. 
+
+Although, an anecdote might inform. Kristi Copeland's husband is from the subcontinent, and his first job was in Cleveland with Booz, Allen, and Hamilton. There were *lots* of foreign born in that office and they all joked that they accepted the job in Cleveland because they didn't know better. 
+
+## Interact race
+
+```{r race, echo=FALSE, eval=TRUE, results='asis'}
+mod.1c = glm(match ~ stemjoblqc + stemjobcountc + f_sex + f_race * f_fb + f_race:stemjoblqc + agec + I(agec^2), data = a, family = poisson) 
+with(mod.1c, cbind(deviance, df.residual, P = pchisq(deviance, df.residual, lower.tail = F)))
+
+cov.mod.1c = vcovHC(mod.1c, type = "HC0")
+std.err.mod.1c = sqrt(diag(cov.mod.1c))
+
+rmod1.est = data.frame(Estimate = coef(mod.1c), "robust se" = std.err.mod.1c, "Pr(>|z|)" = 2 * pnorm(abs(coef(mod.1c)/std.err.mod.1c), lower.tail = F),
+ lcl = coef(mod.1c) - (1.96 * std.err.mod.1c),
+ ucl = coef(mod.1c) + (1.96 * std.err.mod.1c))
+# signif(rmod1.est, 3)
+
+# To get the transformed standard errors
+s = deltamethod(
+    list(~exp(x1), ~exp(x2), ~exp(x3), ~exp(x4), ~exp(x5), ~exp(x6), ~exp(x7), ~exp(x8), ~exp(x9), ~exp(x10), ~exp(x11), ~exp(x12), ~exp(x13), ~exp(x14), ~exp(x15), ~exp(x15)), coef(mod.1c), cov.mod.1c)
+
+# relative risks
+rexp.est = exp(rmod1.est[,-3])
+rexp.est[, "robust.se"] = s
+# signif(rexp.est, 3)
+
+kable(rexp.est, digits = 3)
+
+mod.irace.coef = sprintf('%1.3f (%1.3f)', rexp.est[,1], rexp.est[,2])
+mod.irace.names = names(coef(mod.1c))
+# kable(cbind(mod.irace.names, mod.irace.coef))
+
+```
+
+Perhaps a little surprisingly, Asian men, are a little *less* likely to be matched in high STEM job LQ cities than white men. For Hispanic men it is marginally positive, but not well estimated enough to be definitive, and for Black men, strongly positive.
+
+So, now we need to put all of this together.
+
+# Model-based assessment of interactions
+
+I think the more standard way is to put all interactions into a single model, then test the differences between models, pulling one out at a time.
+
+But, here I will just present a table of each model estimated separately. There are many roads to Rome...
+
+```{r mod.interactions, echo=FALSE, eval=TRUE, results='asis'}
+mod.all = glm(match ~ stemjoblqc + stemjobcountc + f_sex + f_race * f_fb + agec + I(agec^2) +
+              stemjoblqc:f_sex + 
+              stemjoblqc:f_fb +
+              stemjoblqc:f_race,
+              data = a, family = poisson) 
+
+cov.mod.all = vcovHC(mod.all, type = "HC0")
+std.err.mod.all = sqrt(diag(cov.mod.all))
+
+rmod1.est = data.frame(Estimate = coef(mod.all), "robust se" = std.err.mod.all, "Pr(>|z|)" = 2 * pnorm(abs(coef(mod.all)/std.err.mod.all), lower.tail = F),
+ lcl = coef(mod.all) - (1.96 * std.err.mod.all),
+ ucl = coef(mod.all) + (1.96 * std.err.mod.all))
+# signif(rmod1.est, 3)
+
+# To get the transformed standard errors
+s = deltamethod(
+    list(~exp(x1), ~exp(x2), ~exp(x3), ~exp(x4), ~exp(x5), ~exp(x6), ~exp(x7), ~exp(x8), ~exp(x9), ~exp(x10), ~exp(x11), ~exp(x12), ~exp(x13), ~exp(x14), ~exp(x15), ~exp(x16), ~exp(x17), ~exp(x18)), coef(mod.all), cov.mod.all)
+
+# relative risks
+rexp.est = exp(rmod1.est[,-3])
+rexp.est[, "robust.se"] = s
+# signif(rexp.est, 3)
+
+kable(rexp.est, digits = 3)
+
+mod.iall.coef = sprintf('%1.3f (%1.3f)', rexp.est[,1], rexp.est[,2])
+mod.iall.names = names(coef(mod.all))
+# kable(cbind(mod.iall.names, mod.iall.coef))
+
+```
+
+Now figure out a way to display all of that together....
+
+```{r putitalltogether, echo=TRUE, eval=TRUE, collapse=TRUE, results='asis'}
+
+kable(data.frame(mod.lqrace.names, mod.lqrace.coef), format = "pandoc")
+kable(data.frame(mod.isex.names, mod.isex.coef), format = "pandoc")
+kable(data.frame(mod.inat.names, mod.inat.coef), format = "pandoc")
+kable(data.frame(mod.irace.names, mod.irace.coef), format = "pandoc")
+kable(cbind(mod.iall.names, mod.iall.coef), format = "pandoc")
+
+# make a data frame with the mod.iall names, and coefs as the 4th column
+length(mod.iall.coef)
+
+res = data.frame(matrix(data = NA, nrow = 18, ncol = 5), row.names = mod.iall.names)
+
+idx.base = match(mod.lqrace.names, mod.iall.names)
+idx.sex = match(mod.isex.names, mod.iall.names)
+idx.nat = match(mod.inat.names, mod.iall.names)
+idx.race = match(mod.irace.names, mod.iall.names)
+
+res[idx.base, 1] = mod.lqrace.coef
+res[idx.sex, 2] = mod.isex.coef
+res[idx.nat, 3] = mod.inat.coef
+res[idx.race, 4] = mod.irace.coef
+res[,5] = mod.iall.coef
+
+names(res) = c("base", "lq:sex", "lq:nativity", "lq:race", "full")
+kable(res, digits = 3, format = "pandoc")
+```
+
+
+## Model Comparison 
+
+Now remove factors and compare the models.
+
+```{r mod.interactions.test, echo=FALSE, eval=TRUE, results='markup'}
+# the gender interaction
+anova(mod.lq.race, mod.1a, test = "Chisq")
+
+ll.1a= -2 * (logLik(mod.lq.race) - logLik(mod.1a))[1]
+df.1a = summary(mod.1a)$df[1] - summary(mod.lq.race)$df[1]
+pchisq(ll.1a, df = df.1a, lower.tail = F)
+ll.1a = pchisq(ll.1a, df = df.1a, lower.tail = F)
+
+# the natitivy interaction
+anova(mod.lq.race, mod.1b, test = "Chisq")
+
+ll.1b= -2 * (logLik(mod.lq.race) - logLik(mod.1b))[1]
+df.1b = summary(mod.1b)$df[1] - summary(mod.lq.race)$df[1]
+pchisq(ll.1b, df = df.1b, lower.tail = F)
+ll.1b = pchisq(ll.1b, df = df.1b, lower.tail = F)
+
+# and the race interaction
+anova(mod.lq.race, mod.1c, test = "Chisq")
+
+ll.1c = -2 * (logLik(mod.lq.race) - logLik(mod.1c))[1]
+df.1c = summary(mod.1c)$df[1] - summary(mod.lq.race)$df[1]
+pchisq(ll.1c, df = df.1c, lower.tail = F)
+ll.1c = pchisq(ll.1c, df = df.1c, lower.tail = F)
+
+# and the kitchen sink
+anova(mod.lq.race, mod.all, test = "Chisq")
+
+ll.all = -2 * (logLik(mod.lq.race) - logLik(mod.all))[1]
+df.all = summary(mod.all)$df[1] - summary(mod.lq.race)$df[1]
+pchisq(ll.all, df = df.all, lower.tail = F)
+ll.all = pchisq(ll.all, df = df.all, lower.tail = F)
+
+lr.Chisq = c(NA, ll.1a, ll.1b, ll.1c, ll.all)
+# Information criteria
+lls = lapply(list(mod.lq.race, mod.1a, mod.1b, mod.1c, mod.all), function(x) {logLik(x)[1]}) %>% as.data.frame
+names(lls) = c("base", "sex", "nativity", "race", "all")
+
+BICs = lapply(list(mod.lq.race, mod.1a, mod.1b, mod.1c, mod.all), BIC.lm) %>% as.data.frame
+names(BICs) = c("base", "sex", "nativity", "race", "all")
+
+kable(rbind(lr.Chisq, lls, BICs), digits = 3, format = "pandoc")
+crit = rbind(lr.Chisq, lls, BICs) %>% round(3) %>% data.frame
+rownames(crit) = c("Pr[>Chi]", "Log Likelihood", "BIC")
+dim(crit) ; dim(res)
+colnames(crit) = names(res)
+kable(rbind(res, crit), digits = 3, format = "pandoc")
+```
+
+So, again, results are mixed. Looking at the Wald tests (in the previous section) each interaction term has some explanatory power --or, rather some subsets of each do. But the overall model fit is *worse* with all the interactions in. And the best fitting model overall is the one with no interactions.  
+
+I suspect that with our reduced number of observations (now down to ~ 93,000) with some really small cell sizes (e.g. foreign born black women with a STEM degree) the BIC is telling us that we do not have enough data to make a strong case for the effects we see with the coefficients. 
+
+
+# Predicted probabilities
+
+(not shown)
+
+```{r pp.geogmodel, echo=FALSE, eval=FALSE, results='markup'}
+# Below is calculated predicted probabilities
+
+pred.vars = data.frame(with(a, expand.grid(unique(geogname), levels(f_race), levels(f_sex), unique(age))))
+# names(pred.vars) = c("f_race", "f_sex", "age")
+names(pred.vars) = c("geogname", "f_race", "f_sex", "age")
+dim(pred.vars) ; head(pred.vars)
+
+predictions = data.frame(predict(mod.geog, newdata = pred.vars, type = "response", se.fit = T))
+
+pred.frame = data.frame(pred.vars, signif(predictions, 3))
+head(pred.frame) 
+
+source("~/Documents/diss/tools/plotfuns.R")
+ta = with(pred.frame, pred.frame[f_race == "W" & f_sex == "F" & age == 25,])
+summary(ta$fit)
+ta = ta[order(ta$fit), ]
+
+par(mar = c(5, 6, 4, 2) + 0.1)
+dotchart(ta$fit, pch = 20, bty = "n") 
+axis(side = 2, at = 1:55, labels = ta$geogname, las = 1, cex.axis = 0.55)
+    
+one = with(pred.frame, pred.frame[f_race == "W" & f_sex == "M" & age == 44,])
+two = with(pred.frame, pred.frame[f_race == "B" & f_sex == "M" & age == 44,])
+summary(one[,"fit"] - two[,"fit"])
+
+# dotchart.ann(vals = ta$fit,
+#              annot = NULL,
+#              x.lab = "P[match]",
+#              y.lab = ta$geogname,
+#              dotval = 0.01
+#              )
+
+### Also test differences in model fit by removing factors
+anova(mod.geog)
+mod.c = update(mod.geog, . ~ . - factor(geogname))
+anova(mod.c)
+anova(mod.geog, mod.c, test = "Chisq")
+summary(mod.geog) ; summary(mod.c)
+rbind(cbind(mod.geog$null.deviance, mod.c$null.deviance),
+cbind(mod.geog$deviance, mod.c$deviance))
+```
+
+
+
+Now figure out a way to display all of that together....
+
+```{r putitalltogether2, echo=TRUE, eval=TRUE, collapse=TRUE, results='asis'}
+
+kable(data.frame(mod.lqrace.names, mod.lqrace.coef), format = "pandoc")
+kable(data.frame(mod.isex.names, mod.isex.coef), format = "pandoc")
+kable(data.frame(mod.inat.names, mod.inat.coef), format = "pandoc")
+kable(data.frame(mod.irace.names, mod.irace.coef), format = "pandoc")
+kable(cbind(mod.iall.names, mod.iall.coef), format = "pandoc")
+
+# make a data frame with the mod.iall names, and coefs as the 4th column
+length(mod.iall.coef)
+
+res = data.frame(matrix(data = NA, nrow = 18, ncol = 5), row.names = mod.iall.names)
+
+idx.base = match(mod.lqrace.names, mod.iall.names)
+idx.sex = match(mod.isex.names, mod.iall.names)
+idx.nat = match(mod.inat.names, mod.iall.names)
+idx.race = match(mod.irace.names, mod.iall.names)
+
+res[idx.base, 1] = mod.lqrace.coef
+res[idx.sex, 2] = mod.isex.coef
+res[idx.nat, 3] = mod.inat.coef
+res[idx.race, 4] = mod.irace.coef
+res[,5] = mod.iall.coef
+
+names(res) = c("base", "lq:sex", "lq:nativity", "lq:race", "full")
+kable(res, digits = 3, format = "pandoc")
+```
+
+
+## Model Comparison 
+
+Now remove factors and compare the models.
+
+```{r mod.interactions.test2, echo=FALSE, eval=TRUE, results='markup'}
+# the gender interaction
+anova(mod.lq.race, mod.1a, test = "Chisq")
+
+ll.1a= -2 * (logLik(mod.lq.race) - logLik(mod.1a))[1]
+df.1a = summary(mod.1a)$df[1] - summary(mod.lq.race)$df[1]
+pchisq(ll.1a, df = df.1a, lower.tail = F)
+ll.1a = pchisq(ll.1a, df = df.1a, lower.tail = F)
+
+# the nativity interaction
+anova(mod.lq.race, mod.1b, test = "Chisq")
+
+ll.1b= -2 * (logLik(mod.lq.race) - logLik(mod.1b))[1]
+df.1b = summary(mod.1b)$df[1] - summary(mod.lq.race)$df[1]
+pchisq(ll.1b, df = df.1b, lower.tail = F)
+ll.1b = pchisq(ll.1b, df = df.1b, lower.tail = F)
+
+# and the race interaction
+anova(mod.lq.race, mod.1c, test = "Chisq")
+
+ll.1c = -2 * (logLik(mod.lq.race) - logLik(mod.1c))[1]
+df.1c = summary(mod.1c)$df[1] - summary(mod.lq.race)$df[1]
+pchisq(ll.1c, df = df.1c, lower.tail = F)
+ll.1c = pchisq(ll.1c, df = df.1c, lower.tail = F)
+
+# and the kitchen sink
+anova(mod.lq.race, mod.all, test = "Chisq")
+
+ll.all = -2 * (logLik(mod.lq.race) - logLik(mod.all))[1]
+df.all = summary(mod.all)$df[1] - summary(mod.lq.race)$df[1]
+pchisq(ll.all, df = df.all, lower.tail = F)
+ll.all = pchisq(ll.all, df = df.all, lower.tail = F)
+
+lr.Chisq = c(NA, ll.1a, ll.1b, ll.1c, ll.all)
+# Information criteria
+lls = lapply(list(mod.lq.race, mod.1a, mod.1b, mod.1c, mod.all), function(x) {logLik(x)[1]}) %>% as.data.frame
+names(lls) = c("base", "sex", "nativity", "race", "all")
+
+BICs = lapply(list(mod.lq.race, mod.1a, mod.1b, mod.1c, mod.all), BIC.lm) %>% as.data.frame
+names(BICs) = c("base", "sex", "nativity", "race", "all")
+
+kable(rbind(lr.Chisq, lls, BICs), digits = 3, format = "pandoc")
+crit = rbind(lr.Chisq, lls, BICs) %>% round(3) %>% data.frame
+rownames(crit) = c("Pr[>Chi]", "Log Likelihood", "BIC")
+dim(crit) ; dim(res)
+colnames(crit) = names(res)
+kable(rbind(res, crit), digits = 3, format = "pandoc")
+```
+
+So, again, results are mixed. Looking at the Wald tests (in the previous section) each interaction term has some explanatory power --or, rather some subsets of each do. But the overall model fit is *worse* with all the interactions in. And the best fitting model overall is the one with no interactions.  
+
+I suspect that with our reduced number of observations (now down to ~ 93,000) with some really small cell sizes (e.g. foreign born black women with a STEM degree) the BIC is telling us that we do not have enough data to make a strong case for the effects we see with the coefficients. 
+
+
+# Predicted probabilities
+
+(not shown)
+
+```{r pp.geogmodel2, echo=FALSE, eval=FALSE, results='markup'}
+# Below is calculated predicted probabilities
+
+pred.vars = data.frame(with(a, expand.grid(unique(geogname), levels(f_race), levels(f_sex), unique(age))))
+# names(pred.vars) = c("f_race", "f_sex", "age")
+names(pred.vars) = c("geogname", "f_race", "f_sex", "age")
+dim(pred.vars) ; head(pred.vars)
+
+predictions = data.frame(predict(mod.geog, newdata = pred.vars, type = "response", se.fit = T))
+
+pred.frame = data.frame(pred.vars, signif(predictions, 3))
+head(pred.frame) 
+
+source("~/Documents/diss/tools/plotfuns.R")
+ta = with(pred.frame, pred.frame[f_race == "W" & f_sex == "F" & age == 25,])
+summary(ta$fit)
+ta = ta[order(ta$fit), ]
+
+par(mar = c(5, 6, 4, 2) + 0.1)
+dotchart(ta$fit, pch = 20, bty = "n") 
+axis(side = 2, at = 1:55, labels = ta$geogname, las = 1, cex.axis = 0.55)
+    
+one = with(pred.frame, pred.frame[f_race == "W" & f_sex == "M" & age == 44,])
+two = with(pred.frame, pred.frame[f_race == "B" & f_sex == "M" & age == 44,])
+summary(one[,"fit"] - two[,"fit"])
+
+# dotchart.ann(vals = ta$fit,
+#              annot = NULL,
+#              x.lab = "P[match]",
+#              y.lab = ta$geogname,
+#              dotval = 0.01
+#              )
+
+### Also test differences in model fit by removing factors
+anova(mod.geog)
+mod.c = update(mod.geog, . ~ . - factor(geogname))
+anova(mod.c)
+anova(mod.geog, mod.c, test = "Chisq")
+summary(mod.geog) ; summary(mod.c)
+rbind(cbind(mod.geog$null.deviance, mod.c$null.deviance),
+cbind(mod.geog$deviance, mod.c$deviance))
+```
+
+
+# San Jose effect
+
+```{r sanjose, echo=FALSE, eval=FALSE, results='markup'}
+with(a, table(geog_curr))
+s.dot(vals = sort(lqs), ylabels = rownames(sort(lqs)))
+cities = citymapper[,c("code", "geogname", "pop2010")]
+lqframe = data.frame(code = as.numeric(names(lqs)), lq = lqs)
+cframe = merge(x = cities, y = lqframe, by.x = "code", by.y = "code", all.y = T)
+
+s.dot(vals = cframe[order(cframe$lq),"lq"], ylabels = cframe[order(cframe$lq),"geogname"])
+
+# subset down to everything but San Jose
+a.sj = a[a$geog_curr != 740,]
+
+mod.sj = glm(match ~ stemjoblqc + stemjobcountc + f_sex + f_race * f_fb + agec + I(agec^2) +
+              stemjoblqc:f_sex + 
+              stemjoblqc:f_fb +
+              stemjoblqc:f_race,
+              data = a.sj, family = poisson) 
+
+cov.mod.sj = vcovHC(mod.sj, type = "HC0")
+std.err.mod.sj = sqrt(diag(cov.mod.sj))
+
+rmod1.est = data.frame(Estimate = coef(mod.sj), "robust se" = std.err.mod.sj, "Pr(>|z|)" = 2 * pnorm(abs(coef(mod.sj)/std.err.mod.sj), lower.tail = F),
+ lcl = coef(mod.sj) - (1.96 * std.err.mod.sj),
+ ucl = coef(mod.sj) + (1.96 * std.err.mod.sj))
+# signif(rmod1.est, 3)
+
+# To get the transformed standard errors
+s = deltamethod(
+    list(~exp(x1), ~exp(x2), ~exp(x3), ~exp(x4), ~exp(x5), ~exp(x6), ~exp(x7), ~exp(x8), ~exp(x9), ~exp(x10), ~exp(x11), ~exp(x12), ~exp(x13), ~exp(x14), ~exp(x15), ~exp(x16), ~exp(x17), ~exp(x18)), coef(mod.sj), cov.mod.sj)
+
+# relative risks
+rexp.est = exp(rmod1.est[,-3])
+rexp.est[, "robust.se"] = s
+# signif(rexp.est, 3)
+
+kable(rexp.est, digits = 3)
+
+mod.isj.coef = sprintf('%1.3f (%1.3f)', rexp.est[,1], rexp.est[,2])
+mod.isj.names = names(coef(mod.sj))
+BIC.lm(mod.all) ; BIC.lm(mod.sj)
+
+kable(cbind(mod.isj.names, mod.isj.coef, mod.iall.coef))
+
+```
+
+Wow, so the model fit without San Jose is just immesurably better. For the most part the coefficients remain stable with a few notable differences. First, the Asian advantage we measured before remains only for foreign born --just like in the model with all cities. But where before we could say that there was a measurable (if small) disadvantage for all Asian men in high STEM job LQ cities, that disadvantage evaporates (or at least we no longer have evidence to support it) once San Jose is eliminated. This suggests that the San Jose effect is negative for Asian men. That is unexpected. Also, the effect modifier for women in high STEM job LQ cities, which was statistically significantly positive before, has a slightly higher magnitude *without* San Jose. 
+
+The advantage for Blacks attenuates once we remove San Jose, and the advantage for Hispanics increases slightly but so does our measurement error. In neither case do we have enough data to estimate a result greater than zero. 
+
+The right way to do this would be to run through the entire analysis again without San Jose to see if our interactions make for a better model fit --remember that they did not in the model with all 55 cities. 
+
+But I will not do that for a couple of reasons. 1. while it hints at some interesting San Jose effects, they are small. In other words, the slight differences we see for women and Asian men is, I think, less of a story than the relative stability of the coefficients. 2. it draws attention to how sensitive these models are to geographic boundary-making. I imagine we would see all kinds of small, interesting changes as we broadened the scope to more cities, dropped selected cities, combined some into larger labor markets (a prime candidate is San Francisco/San Jose), etc.  In other words, we know that there are some unique effects in different places, but this takes us down a rabbit hole that is best left for another paper: given these results, are there cities in which women, Blacks, Hispanics, Asians, Foreign Born, etc. have better/worse outcomes. That is more of a mapping paper and would be interesting. IMHO there is no way to avoid a fully saturated, fully interacting model. I'll try to estimate that, but I think my computer will explode if I do. 
+
+Operation explosion:
+
+```{r explode, echo=FALSE, eval=FALSE, results='asis'}
+# subset down to everything but San Jose
+rm(a.sj)
+
+mod.explode = glm(match ~ stemjobcountc + agec + I(agec^2) +
+              stemjoblqc*f_sex*f_fb*f_race,
+              data = a, family = poisson) 
+
+kable(anova(mod.explode), format = "pandoc", digits = 2)
+```
+
+As an exploratory exercise, this is interesting. Sex does three times the work than each of the three next largest variables: stemjoblq, race, and age. Next is the interaction between nativity and race which tells us that nativity is effectively meaningless in the model unless it is considered together with race. Sex also has a pretty big modification effect on nativity. The geography effect is big by itself, but has very, very little influence on the other factors, except race. 
+
+```{r explode.coefs, echo=FALSE, eval=FALSE, results='markup'}
+kable(summary(mod.explode), format = "pandoc", digits = 3)
+```
+
+The race effect is small and weak, and appears to be marginally positive for Blacks, while immesurably small for Asians and Hispanics. 
+
+Our conclusions are mostly unchanged. Except to say that I was right in the way I specified the model. 
+
+```{r explode.se, echo=FALSE, eval=FALSE, results='markup'}
+cov.mod.explode = vcovHC(mod.explode, type = "HC0")
+std.err.mod.explode = sqrt(diag(cov.mod.explode))
+
+rmod1.est = data.frame(Estimate = coef(mod.explode), "robust se" = std.err.mod.explode, "Pr(>|z|)" = 2 * pnorm(abs(coef(mod.explode)/std.err.mod.explode), lower.tail = F),
+ lcl = coef(mod.explode) - (1.96 * std.err.mod.explode),
+ ucl = coef(mod.explode) + (1.96 * std.err.mod.explode))
+# signif(rmod1.est, 3)
+
+# To get the transformed standard errors
+s = deltamethod(
+    list(~exp(x1), ~exp(x2), ~exp(x3), ~exp(x4), ~exp(x5), ~exp(x6), ~exp(x7), ~exp(x8), ~exp(x9), ~exp(x10), ~exp(x11), ~exp(x12), ~exp(x13), ~exp(x14), ~exp(x15), ~exp(x16), ~exp(x17), ~exp(x18), ~exp(x19), ~exp(x20), ~exp(x21), ~exp(x22), ~exp(x23), ~exp(x24), ~exp(x25), ~exp(x26), ~exp(x27), ~exp(x28), ~exp(x29), ~exp(x30), ~exp(x31), ~exp(x32), ~exp(x33), ~exp(x34), ~exp(x35)), coef(mod.explode), cov.mod.explode)
+
+# relative risks
+rexp.est = exp(rmod1.est[,-3])
+rexp.est[, "robust.se"] = s
+# signif(rexp.est, 3)
+
+kable(rexp.est, digits = 3)
+
+mod.iexplode.coef = sprintf('%1.3f (%1.3f)', rexp.est[,1], rexp.est[,2])
+mod.iexplode.names = names(coef(mod.explode))
+BIC.lm(mod.all) ; BIC.lm(mod.explode)
+
+m = match(mod.iall.names, mod.iexplode.names)
+
+kable(cbind(mod.iexplode.names, mod.iexplode.coef, mod.iall.coef))
+
+```
+
+## Predictive performance
+
+```{r predict.performance, echo=TRUE, eval=TRUE, collapse=TRUE}
+# newdata = with(a, expand.grid(unique(f_sex), unique(f_fb), unique(f_race), unique(stemjoblqc), unique(stemjobcountc), unique(agec)))
+# 
+# names(newdata) = c("f_sex", "f_fb", "f_race", "stemjoblqc", "stemjobcountc", "agec")
+# dim(newdata) ; dim(a)
+
+explode.preds = predict(mod.explode, newdata = a, type = "response")
+
+head(data.frame(explode.preds, mod.explode$fitted.values))
+```
+
+```{r plotroc, echo=TRUE, eval = T, collapse=TRUE, results = 'markdown'}
+source('~/Documents/rfuns/roclines.R')
+require(ROCR)
+roc = roclines(mod.explode, a$match)
+
+pred.object = prediction(mod.explode$fitted.values, a$match)
+perf.object = performance(pred.object, "tpr", "fpr")
+plot(perf.object)
+
+
+plot(perf.object, 
+   box.lty=7, box.lwd=2,
+  box.col="black", lwd=2, colorkey.relwidth=0.5, xaxis.cex.axis=1,
+   yaxis.cex.axis=1, cex.lab=1.5, cex.main=2, print.cutoffs.at=c(0.2,0.4,0.6,0.8))
+abline(0,1)
+
+points(roc, type = "s", col = "purple")
+```
+
+
+
+```{r roc1, echo=T, eval=TRUE, collapse=T, results='markdown', fig.height=8, fig.width=8}
+threshold = 0.5
+truth = a$match
+
+trueposrate = function(threshold, truth, fitted) {
+    pred = fitted > threshold
+    
+    offers = truth == T
+    truepos = truth == T & pred == T
+    trueposrate = sum(truepos) / sum(offers)
+    
+    return(trueposrate)
+}
+
+falseposrate = function(threshold, truth, fitted) {
+    pred = fitted > threshold
+    
+    nonoffers = truth == F
+    falsepos = truth == F & pred == T
+    falseposrate = sum(falsepos) / sum(nonoffers)
+    
+    return(falseposrate)
+}
+
+thresholds = 0:100 / 100    
+
+# The base plot
+plot(x = thresholds, y = thresholds, type = "l", lty = "dotted", xlab = "False Positive Rate", ylab = "True Positive Rate", main = "ROC Curve", bty = "n")
+abline(h = 1:5 / 10 * 2, col = "grey", lwd = 0.5)
+abline(v = 1:5 / 10 * 2, col = "grey", lwd = 0.5)
+
+# Exploded model
+tps = sapply(thresholds, function(x) {trueposrate(x, truth = a$match, fitted = mod.explode$fitted.values)})
+fps = sapply(thresholds, function(x) {falseposrate(x, truth = a$match, fitted = mod.explode$fitted.values)})
+
+x = rev(fps)
+y = rev(tps)
+points(y ~ x, type = "l", col = "black")
+
+# Add curve for the base model
+tps = sapply(thresholds, function(x) {trueposrate(x, truth = a$match, fitted = modbase$fitted.values)})
+fps = sapply(thresholds, function(x) {falseposrate(x, truth = a$match, fitted = modbase$fitted.values)})
+
+x = rev(fps)
+y = rev(tps)
+points(y ~ x, type = "l", col = "blue")
+```
+
+
+Now just curious how much better a logistic model would do...
+
+```{r roc2, echo=T, eval=TRUE, collapse=T, results='markdown', fig.height=8, fig.width=8}
+modbase.logit = glm(match ~ f_race + f_sex + f_fb + agec + I(agec^2), data = a, family = binomial())
+
+# Add curve for the logit
+tps = sapply(thresholds, function(x) {trueposrate(x, truth = a$match, fitted = modbase.logit$fitted.values)})
+fps = sapply(thresholds, function(x) {falseposrate(x, truth = a$match, fitted = modbase.logit$fitted.values)})
+
+x = rev(fps)
+y = rev(tps)
+points(y ~ x, type = "l", col = "red")
+
+```
